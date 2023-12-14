@@ -1,0 +1,11 @@
+.6502
+
+.org 0x4000
+start:
+  ;lda #0xa5
+  ;lda 0x4003
+  ldx #0xe0
+  stx 0x00
+  lda 0x00
+  brk
+
