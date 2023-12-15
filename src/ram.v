@@ -11,19 +11,20 @@
 
 module ram
 (
-  input  [8:0] address,
+  input  [10:0] address,
   input  [7:0] data_in,
   output [7:0] data_out,
   input write_enable,
   input clk
 );
 
-reg [7:0] storage [15:0];
-assign data_out = storage[address[3:0]];
+reg [7:0] storage [2047:0];
 
 always @(posedge clk) begin
-  if (write_enable)
-    storage[address[3:0]] <= data_in;
+  if (write_enable) begin
+    storage[address[2047:0]] <= data_in;
+  end else
+    data_out <= storage[address];
 end
 
 endmodule
