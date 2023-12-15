@@ -11,14 +11,15 @@
 
 module rom
 (
-  input  [10:0] address,
-  output [7:0] data_out
+  input  [5:0] address,
+  output reg [7:0] data_out,
+  input clk
 );
 
 reg [7:0] data;
-assign data_out = data;
+//  assign data_out = data;
 
-reg [7:0] memory [2047:0];
+reg [7:0] memory [63:0];
 
 initial begin
   $readmemh("rom.txt", memory);
