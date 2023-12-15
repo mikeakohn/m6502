@@ -16,10 +16,9 @@ default:
 program:
 	iceFUNprog $(PROGRAM).bin
 
-.PHONY: test
-test:
-	naken_asm -l -type bin -o simple.bin test/simple.asm
-	#naken_asm -l -type bin -o blink.bin test/blink.asm
+rom_0:
+	naken_asm -l -type bin -o rom.bin test/simple.asm
+	python3 tools/bin2txt.py rom.bin > rom.txt
 
 clean:
 	@rm -f $(PROGRAM).bin $(PROGRAM).json $(PROGRAM).asc *.lst
