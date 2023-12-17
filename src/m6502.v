@@ -676,10 +676,10 @@ always @(posedge clk) begin
     STATE_FETCH_IND_HI_1:
       begin
         if (address_mode == ADDRESS_MODE_INDIRECT_Y)
-          ea[7:0] <= { mem_data_out, arg[0:7] } + reg_y;
+          ea[7:0] <= { mem_data_out, arg[7:0] } + reg_y;
         else
           ea[15:8] <= mem_data_out;
-          ea[7:0] <= arg[0:7];
+          ea[7:0] <= arg[7:0];
 
         next_state <= STATE_FETCH_ABS_0;
       end
