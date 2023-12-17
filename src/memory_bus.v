@@ -78,7 +78,8 @@ end
 
 rom rom_0(
   .address   (address[5:0]),
-  .data_out  (rom_data_out)
+  .data_out  (rom_data_out),
+  .clk       (raw_clk)
 );
 
 ram ram_0(
@@ -86,7 +87,7 @@ ram ram_0(
   .data_in      (ram_data_in),
   .data_out     (ram_data_out),
   .write_enable (ram_write_enable),
-  .clk          (clk)
+  .clk          (raw_clk)
 );
 
 peripherals peripherals_0(

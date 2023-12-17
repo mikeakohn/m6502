@@ -11,14 +11,14 @@
 
 module ram
 (
-  input  [5:0] address,
+  input  [8:0] address,
   input  [7:0] data_in,
   output reg [7:0] data_out,
   input write_enable,
   input clk
 );
 
-reg [8:0] memory [63:0];
+reg [7:0] memory [63:0];
 
 always @(posedge clk) begin
   if (write_enable) begin

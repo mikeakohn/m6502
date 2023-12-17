@@ -123,10 +123,14 @@ always @(posedge raw_clk) begin
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     //3'b000: begin column_value <= 4'b0111; leds_value <= ~arg[7:0]; end
     //3'b000: begin column_value <= 4'b0111; leds_value <= ~ea[7:0]; end
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags[7:0]; end
+
+//    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags[7:0]; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_x; end
     //3'b010: begin column_value <= 4'b1011; leds_value <= ~instruction; end
+
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
-    3'b110: begin column_value <= 4'b1110; leds_value <= ~state; end
+    3'b110: begin column_value <= 4'b1110; leds_value <= ~pc[15:8]; end
+//    3'b110: begin column_value <= 4'b1110; leds_value <= ~state; end
     default: begin column_value <= 4'b1111; leds_value <= 8'hff; end
   endcase
 end
