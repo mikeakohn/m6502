@@ -371,48 +371,48 @@ always @(posedge clk) begin
                       OP_BRK:
                         begin
                           next_state <= STATE_HALTED;
-                          address_mode = ADDRESS_MODE_NONE;
+                          address_mode <= ADDRESS_MODE_NONE;
                         end
                       OP_RTI:
                         begin
                           next_state <= STATE_POP_SR_0;
-                          address_mode = ADDRESS_MODE_NONE;
+                          address_mode <= ADDRESS_MODE_NONE;
                         end
                       OP_RTS:
                         begin
                           next_state <= STATE_FETCH_LO_0;
-                          address_mode = ADDRESS_MODE_JSR;
+                          address_mode <= ADDRESS_MODE_JSR;
                         end
                       OP_JSR:
                         begin
                           next_state <= STATE_FETCH_LO_0;
-                          address_mode = ADDRESS_MODE_NONE;
+                          address_mode <= ADDRESS_MODE_NONE;
                         end
                       OP_JMP:
                         begin
                           next_state <= STATE_FETCH_LO_0;
-                          address_mode = ADDRESS_MODE_NONE;
+                          address_mode <= ADDRESS_MODE_NONE;
                         end
                       OP_JMP_IND:
                         begin
                           next_state <= STATE_FETCH_LO_0;
-                          address_mode = ADDRESS_MODE_ABSOLUTE16;
+                          address_mode <= ADDRESS_MODE_ABSOLUTE16;
                         end
                       default:
                         begin
                           next_state <= STATE_EXECUTE;
-                          address_mode = ADDRESS_MODE_NONE;
+                          address_mode <= ADDRESS_MODE_NONE;
                         end
                     endcase
                   end
                 3'b010:
                   begin
-                    address_mode = ADDRESS_MODE_NONE;
+                    address_mode <= ADDRESS_MODE_NONE;
                     next_state <= STATE_EXECUTE;
                   end
                 3'b110:
                   begin
-                    address_mode = ADDRESS_MODE_NONE;
+                    address_mode <= ADDRESS_MODE_NONE;
                     next_state <= STATE_EXECUTE;
                   end
                 MODE_C00_IMMEDIATE:
@@ -722,12 +722,16 @@ always @(posedge clk) begin
                 default:
                   begin
                     case (operation)
-                      OP_JMP:     pc <= arg;
+                      OP_JMP:
+                        begin
+                          pc <= mem_address;
+                          next_state <= STATE_FETCH_OP_0;
+                        end
                       OP_JMP_IND: pc <= arg;
                       OP_STY:     arg <= reg_y;
                       OP_LDY:     reg_y <= arg[7:0];
-                      OP_CPY:     arg = { flag_carry, reg_y } - arg;
-                      OP_CPX:     arg = { flag_carry, reg_x } - arg;
+                      OP_CPY:     arg <= { flag_carry, reg_y } - arg;
+                      OP_CPX:     arg <= { flag_carry, reg_x } - arg;
                     endcase
                   end
               endcase
@@ -735,19 +739,19 @@ always @(posedge clk) begin
               if (mode == 3'b110 || mode == 3'b010)
                 if (instruction[7:2] == OPCODE_PHP ||
                     instruction[7:2] == OPCODE_PHA)
-                  next_state = STATE_FINISH_PUSH;
+                  next_state <= STATE_FINISH_PUSH;
                 else if (instruction[7:2] == OPCODE_PLP ||
                          instruction[7:2] == OPCODE_PLA)
-                  next_state = STATE_FINISH_POP;
+                  next_state <= STATE_FINISH_POP;
                 else
                   next_state <= STATE_FETCH_OP_0;
               else if (operation == OP_STY)
-                next_state = STATE_STORE_ARG_0;
+                next_state <= STATE_STORE_ARG_0;
               else if (operation == OP_CPY || operation == OP_INY ||
                        operation == OP_DEY)
-                next_state = STATE_WRITEBACK_Y;
+                next_state <= STATE_WRITEBACK_Y;
               else if (operation == OP_CPX || operation == OP_INX)
-                next_state = STATE_WRITEBACK_X;
+                next_state <= STATE_WRITEBACK_X;
             end
           2'b01:
             begin
@@ -757,9 +761,9 @@ always @(posedge clk) begin
                 OP_EOR: arg <= reg_a ^ arg;
                 OP_ADC: arg <= reg_a + arg + flag_carry;
                 OP_STA: arg <= reg_a;
-                OP_LDA: reg_a = arg;
-                OP_CMP: arg = { flag_carry, reg_a } - arg;
-                OP_SBC: arg = { flag_carry, reg_a } - arg;
+                OP_LDA: reg_a <= arg;
+                OP_CMP: arg <= { flag_carry, reg_a } - arg;
+                OP_SBC: arg <= { flag_carry, reg_a } - arg;
               endcase
 
               if (operation == OP_STA)
@@ -812,11 +816,11 @@ always @(posedge clk) begin
                 endcase
 
                 if (operation == OP_LDX)
-                  next_state = STATE_WRITEBACK_X;
+                  next_state <= STATE_WRITEBACK_X;
                 else if (operation == OP_STX)
-                  next_state = STATE_STORE_ARG_0;
+                  next_state <= STATE_STORE_ARG_0;
                 else
-                  next_state = STATE_FETCH_OP_0;
+                  next_state <= STATE_FETCH_OP_0;
               end
             end
           2'b11:
@@ -830,7 +834,7 @@ always @(posedge clk) begin
         flag_carry <= arg[8];
         flag_negative <= arg[7];
         flag_zero <= arg[7:0] == 0;
-        if (operation != OP_CMP) reg_a = arg[7:0];
+        if (operation != OP_CMP) reg_a <= arg[7:0];
         next_state <= STATE_FETCH_OP_0;
       end
     STATE_WRITEBACK_X:
@@ -846,7 +850,7 @@ always @(posedge clk) begin
         if (operation != OP_DEY) flag_carry <= arg[8];
         flag_negative <= arg[7];
         flag_zero <= arg[7:0] == 0;
-        if (operation != OP_CPY) reg_y = arg[7:0];
+        if (operation != OP_CPY) reg_y <= arg[7:0];
         next_state <= STATE_FETCH_OP_0;
       end
     STATE_STORE_ARG_0:
