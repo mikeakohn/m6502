@@ -234,15 +234,15 @@ parameter MODE_C00_ABSOLUTE   = 3'b011; // ABSOLUTE
 parameter MODE_C00_ZP_X       = 3'b101; // ZP, X
 parameter MODE_C00_ABSOLUTE_X = 3'b101; // ABSOLUTE, X
 
-// ??
+// branches
 parameter OP_BPL = 3'b000; // 000_100_00
-parameter OP_BMI = 3'b000; // 001_100_00
-parameter OP_BVC = 3'b000; // 010_100_00
-parameter OP_BVS = 3'b000; // 011_100_00
-parameter OP_BCC = 3'b000; // 100_100_00
-parameter OP_BCS = 3'b000; // 101_100_00
-parameter OP_BNE = 3'b000; // 110_100_00
-parameter OP_BEQ = 3'b000; // 111_100_00
+parameter OP_BMI = 3'b001; // 001_100_00
+parameter OP_BVC = 3'b010; // 010_100_00
+parameter OP_BVS = 3'b011; // 011_100_00
+parameter OP_BCC = 3'b100; // 100_100_00
+parameter OP_BCS = 3'b101; // 101_100_00
+parameter OP_BNE = 3'b110; // 110_100_00
+parameter OP_BEQ = 3'b111; // 111_100_00
 
 // c = 0, b = 0.
 parameter OP_BRK = 3'b000; // _000_00;
