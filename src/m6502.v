@@ -234,6 +234,16 @@ parameter MODE_C00_ABSOLUTE   = 3'b011; // ABSOLUTE
 parameter MODE_C00_ZP_X       = 3'b101; // ZP, X
 parameter MODE_C00_ABSOLUTE_X = 3'b101; // ABSOLUTE, X
 
+// ??
+parameter OP_BPL = 3'b000; // 000_100_00
+parameter OP_BMI = 3'b000; // 001_100_00
+parameter OP_BVC = 3'b000; // 010_100_00
+parameter OP_BVS = 3'b000; // 011_100_00
+parameter OP_BCC = 3'b000; // 100_100_00
+parameter OP_BCS = 3'b000; // 101_100_00
+parameter OP_BNE = 3'b000; // 110_100_00
+parameter OP_BEQ = 3'b000; // 111_100_00
+
 // c = 0, b = 0.
 parameter OP_BRK = 3'b000; // _000_00;
 parameter OP_JSR = 3'b001; // _000_00;
@@ -269,15 +279,6 @@ parameter OP_TXA = 3'b100; // _010_10;
 parameter OP_TAX = 3'b101; // _010_10;
 parameter OP_DEX = 3'b110; // _010_10;
 parameter OP_NOP = 3'b111; // _010_10;
-
-parameter OPCODE_BPL = 8'h10 >> 2; // 000_100_00
-parameter OPCODE_BMI = 8'h30 >> 2; // 001_100_00
-parameter OPCODE_BVC = 8'h50 >> 2; // 010_100_00
-parameter OPCODE_BVS = 8'h70 >> 2; // 011_100_00
-parameter OPCODE_BCC = 8'h90 >> 2; // 100_100_00
-parameter OPCODE_BCS = 8'hb0 >> 2; // 101_100_00
-parameter OPCODE_BNE = 8'hd0 >> 2; // 110_100_00
-parameter OPCODE_BEQ = 8'hf0 >> 2; // 111_100_00
 
 parameter OPCODE_PHP = 8'h08 >> 2; // 000_010_00
 parameter OPCODE_PLP = 8'h28 >> 2; // 001_010_00
@@ -690,16 +691,6 @@ always @(posedge clk) begin
           2'b00:
             begin
               case (instruction[7:2])
-//joe
-                OPCODE_BPL: flag_carry <= 0;
-                OPCODE_BMI: flag_carry <= 0;
-                OPCODE_BVC: flag_carry <= 0;
-                OPCODE_BVS: flag_carry <= 0;
-                OPCODE_BCC: flag_carry <= 0;
-                OPCODE_BCS: flag_carry <= 0;
-                OPCODE_BNE: flag_carry <= 0;
-                OPCODE_BEQ: flag_carry <= 0;
-
                 OPCODE_CLC: flag_carry <= 0;
                 OPCODE_SEC: flag_carry <= 1;
                 OPCODE_CLI: flag_interrupt <= 0;
