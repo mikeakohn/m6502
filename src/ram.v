@@ -15,12 +15,12 @@ module ram
   input  [7:0] data_in,
   output reg [7:0] data_out,
   input write_enable,
-  input clk
+  input raw_clk
 );
 
 reg [7:0] memory [63:0];
 
-always @(posedge clk) begin
+always @(posedge raw_clk) begin
   if (write_enable) begin
     memory[address] <= data_in;
   end else
