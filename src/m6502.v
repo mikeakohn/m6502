@@ -58,6 +58,7 @@ reg [7:0] reg_y = 0;
 // assign reg_y = { reg_index[1] };
 
 // ALU.
+/*
 reg [7:0] alu_data_0;
 reg [7:0] alu_data_1;
 reg [2:0] alu_command;
@@ -65,6 +66,7 @@ wire [8:0] alu_result;
 reg [7:0] inc_result;
 reg [7:0] shift_result;
 reg shift_carry;
+*/
 
 //  Stack.
 reg [7:0] sp = 8'h00;
@@ -120,12 +122,12 @@ end
 // This block simply drives the 8x4 LEDs.
 always @(posedge raw_clk) begin
   case (count[9:7])
-    3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
+    3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_x; end
     //3'b000: begin column_value <= 4'b0111; leds_value <= ~arg[7:0]; end
     //3'b000: begin column_value <= 4'b0111; leds_value <= ~ea[7:0]; end
 
 //    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags[7:0]; end
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_x; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
     //3'b010: begin column_value <= 4'b1011; leds_value <= ~instruction; end
 
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
@@ -232,9 +234,10 @@ parameter MODE_C00_IMMEDIATE  = 3'b000; // #IMMEDIATE
 parameter MODE_C00_ZP         = 3'b001; // ZP
 parameter MODE_C00_ABSOLUTE   = 3'b011; // ABSOLUTE
 parameter MODE_C00_ZP_X       = 3'b101; // ZP, X
-parameter MODE_C00_ABSOLUTE_X = 3'b101; // ABSOLUTE, X
+parameter MODE_C00_ABSOLUTE_X = 3'b111; // ABSOLUTE, X
 
 // c = 0, b = 4
+/*
 parameter OP_BPL = 3'b000; // _100_00
 parameter OP_BMI = 3'b001; // _100_00
 parameter OP_BVC = 3'b010; // _100_00
@@ -243,6 +246,7 @@ parameter OP_BCC = 3'b100; // _100_00
 parameter OP_BCS = 3'b101; // _100_00
 parameter OP_BNE = 3'b110; // _100_00
 parameter OP_BEQ = 3'b111; // _100_00
+*/
 
 // c = 0, b = 0.
 parameter OP_BRK = 3'b000; // _000_00;
@@ -279,6 +283,15 @@ parameter OP_TXA = 3'b100; // _010_10;
 parameter OP_TAX = 3'b101; // _010_10;
 parameter OP_DEX = 3'b110; // _010_10;
 parameter OP_NOP = 3'b111; // _010_10;
+
+parameter OPCODE_BPL = 8'h10 >> 2; // 000_100_00
+parameter OPCODE_BMI = 8'h30 >> 2; // 001_100_00
+parameter OPCODE_BVC = 8'h50 >> 2; // 010_100_00
+parameter OPCODE_BVS = 8'h70 >> 2; // 011_100_00
+parameter OPCODE_BCC = 8'h90 >> 2; // 100_100_00
+parameter OPCODE_BCS = 8'hb0 >> 2; // 101_100_00
+parameter OPCODE_BNE = 8'hd0 >> 2; // 110_100_00
+parameter OPCODE_BEQ = 8'hf0 >> 2; // 111_100_00
 
 parameter OPCODE_PHP = 8'h08 >> 2; // 000_010_00
 parameter OPCODE_PLP = 8'h28 >> 2; // 001_010_00
@@ -410,7 +423,8 @@ always @(posedge clk) begin
                         end
                       default:
                         begin
-                          next_state <= STATE_EXECUTE;
+//                          next_state <= STATE_EXECUTE;
+                          next_state <= STATE_FETCH_IM_0;
                           address_mode <= ADDRESS_MODE_NONE;
                         end
                     endcase
@@ -425,21 +439,11 @@ always @(posedge clk) begin
                     address_mode <= ADDRESS_MODE_NONE;
                     next_state <= STATE_EXECUTE;
                   end
-                3'b100:
-                  begin
-                    case (operation)
-                      OP_BNE:
-                        begin
-                          next_state <= STATE_EXECUTE;
-                          address_mode <= ADDRESS_MODE_NONE;
-                        end
-                    endcase
-                  end
-                MODE_C00_IMMEDIATE:
-                  begin
-                    next_state <= STATE_FETCH_IM_0;
-                    address_mode <= ADDRESS_MODE_NONE;
-                  end
+//                MODE_C00_IMMEDIATE:
+//                  begin
+//                    next_state <= STATE_FETCH_IM_0;
+//                    address_mode <= ADDRESS_MODE_NONE;
+//                  end
                 MODE_C00_ZP:
                   begin
                     next_state <= STATE_FETCH_IM_0;
@@ -701,6 +705,15 @@ always @(posedge clk) begin
           2'b00:
             begin
               case (instruction[7:2])
+                OPCODE_BNE:
+                  begin
+                    if (flag_zero == 1)
+                      begin
+                        pc <= (mem_address + ($signed(arg[7:0]) + 1)) & 16'hffff;
+                        //pc <= 16'b0101010110101010;
+                        next_state <= STATE_FETCH_OP_0;
+                      end
+                  end
                 OPCODE_CLC: flag_carry <= 0;
                 OPCODE_SEC: flag_carry <= 1;
                 OPCODE_CLI: flag_interrupt <= 0;
@@ -747,11 +760,11 @@ always @(posedge clk) begin
                           pc <= mem_address;
                           next_state <= STATE_FETCH_OP_0;
                         end
-                      OP_JMP_IND: pc <= arg;
-                      OP_STY:     arg <= reg_y;
+                      OP_JMP_IND: pc <= arg[7:0];
+                      OP_STY:     arg[7:0] <= reg_y;
                       OP_LDY:     reg_y <= arg[7:0];
-                      OP_CPY:     arg <= { flag_carry, reg_y } - arg;
-                      OP_CPX:     arg <= { flag_carry, reg_x } - arg;
+                      OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
+                      OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
                     endcase
                   end
               endcase
@@ -768,10 +781,13 @@ always @(posedge clk) begin
               else if (operation == OP_STY)
                 next_state <= STATE_STORE_ARG_0;
               else if (operation == OP_CPY || operation == OP_INY ||
-                       operation == OP_DEY)
+                       operation == OP_DEY || operation == OP_TAY ||
+                       operation == OP_LDY)
                 next_state <= STATE_WRITEBACK_Y;
               else if (operation == OP_CPX || operation == OP_INX)
                 next_state <= STATE_WRITEBACK_X;
+              else if (operation == OP_TYA)
+                next_state <= STATE_WRITEBACK_A;
             end
           2'b01:
             begin
