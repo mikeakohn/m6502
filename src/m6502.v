@@ -41,7 +41,6 @@ reg mem_write_enable = 0;
 // Clock.
 reg [21:0] count = 0;
 reg [7:0] state = 0;
-reg [7:0] next_state;
 reg [19:0] clock_div;
 reg [14:0] delay_loop;
 wire clk;
@@ -329,738 +328,732 @@ parameter ADDRESS_MODE_JSR =        7;
 
 // This block is the main CPU instruction execute state machine.
 always @(posedge clk) begin
-  case (state)
-    STATE_RESET:
-      begin
-        // FIXME: Set to appropriate value later and add 0x100.
-        sp <= 8'h0f;
-        flag_negative <= 0;
-        flag_overflow <= 0;
-        flag_break <= 0;
-        flag_decimal <= 0;
-        flag_interrupt <= 0;
-        flag_carry <= 0;
-        flag_zero <= 0;
-        mem_address <= 0;
-        mem_write_enable <= 0;
-        mem_data_in <= 0;
-        instruction <= 0;
-        delay_loop = 12000;
-        eeprom_strobe <= 0;
-        reg_a <= 0;
-        reg_x <= 0;
-        reg_y <= 0;
-        next_state <= STATE_DELAY_LOOP;
-        //next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_DELAY_LOOP:
-      begin
-        // This is probably not needed. The chip starts up fine without it.
-        if (delay_loop == 0) begin
-
-          // If button is not pushed, start rom.v code otherwise use EEPROM.
-          //if (button_program_select)
-            pc <= 16'h4000;
-          //else
-          //  pc <= 0;
-
-          //next_state <= STATE_EEPROM_START;
-          next_state <= STATE_FETCH_OP_0;
-        end else begin
-          delay_loop <= delay_loop - 1;
-        end
-      end
-    STATE_FETCH_OP_0:
-      begin
-        mem_address <= pc;
-        mem_write_enable <= 1'b0;
-        next_state <= STATE_FETCH_OP_1;
-      end
-    STATE_FETCH_OP_1:
-      begin
-        instruction <= mem_data_out;
-        next_state <= STATE_START;
-        pc <= pc + 1;
-      end
-    STATE_START:
-      begin
-        case (instruction[1:0])
-          2'b00:
-            begin
-              case (mode)
-                3'b000:
-                  begin
-                    case (operation)
-                      OP_BRK:
-                        begin
-                          next_state <= STATE_HALTED;
-                          address_mode <= ADDRESS_MODE_NONE;
-                        end
-                      OP_RTI:
-                        begin
-                          next_state <= STATE_POP_SR_0;
-                          address_mode <= ADDRESS_MODE_NONE;
-                        end
-                      OP_RTS:
-                        begin
-                          next_state <= STATE_FETCH_LO_0;
-                          address_mode <= ADDRESS_MODE_JSR;
-                        end
-                      OP_JSR:
-                        begin
-                          next_state <= STATE_FETCH_LO_0;
-                          address_mode <= ADDRESS_MODE_NONE;
-                        end
-                      OP_JMP:
-                        begin
-                          next_state <= STATE_FETCH_LO_0;
-                          address_mode <= ADDRESS_MODE_NONE;
-                        end
-                      OP_JMP_IND:
-                        begin
-                          next_state <= STATE_FETCH_LO_0;
-                          address_mode <= ADDRESS_MODE_ABSOLUTE16;
-                        end
-                      default:
-                        begin
-//                          next_state <= STATE_EXECUTE;
-                          next_state <= STATE_FETCH_IM_0;
-                          address_mode <= ADDRESS_MODE_NONE;
-                        end
-                    endcase
-                  end
-                3'b010:
-                  begin
-                    address_mode <= ADDRESS_MODE_NONE;
-                    next_state <= STATE_EXECUTE;
-                  end
-                3'b110:
-                  begin
-                    address_mode <= ADDRESS_MODE_NONE;
-                    next_state <= STATE_EXECUTE;
-                  end
-//                MODE_C00_IMMEDIATE:
-//                  begin
-//                    next_state <= STATE_FETCH_IM_0;
-//                    address_mode <= ADDRESS_MODE_NONE;
-//                  end
-                MODE_C00_ZP:
-                  begin
-                    next_state <= STATE_FETCH_IM_0;
-                    address_mode <= ADDRESS_MODE_ABSOLUTE;
-                  end
-                MODE_C00_ABSOLUTE:
-                  begin
-                    next_state <= STATE_FETCH_LO_0;
-                    address_mode <= ADDRESS_MODE_ABSOLUTE;
-                  end
-                MODE_C00_ZP_X:
-                  begin
-                    next_state <= STATE_FETCH_IM_0;
-                    address_mode <= ADDRESS_MODE_ABSOLUTE_X;
-                  end
-                MODE_C00_ABSOLUTE_X:
-                  begin
-                    next_state <= STATE_FETCH_LO_0;
-                    address_mode <= ADDRESS_MODE_ABSOLUTE_X;
-                  end
-              endcase
-            end
-          2'b01:
-            begin
-              if (operation == OP_STA) begin
-                next_state <= STATE_EXECUTE;
-              end else begin
-                case (mode)
-                  MODE_C01_INDIRECT_ZP_X:
-                    begin
-                      next_state <= STATE_FETCH_IM_0;
-                      address_mode <= ADDRESS_MODE_INDIRECT_X;
-                    end
-                  MODE_C01_ZP:
-                    begin
-                      next_state <= STATE_FETCH_IM_0;
-                      address_mode <= ADDRESS_MODE_ABSOLUTE;
-                    end
-                  MODE_C01_IMMEDIATE:
-                    begin
-                      next_state <= STATE_FETCH_IM_0;
-                      address_mode <= ADDRESS_MODE_NONE;
-                    end
-                  MODE_C01_ABSOLUTE:
-                    begin
-                      next_state <= STATE_FETCH_LO_0;
-                      address_mode <= ADDRESS_MODE_ABSOLUTE;
-                    end
-                  MODE_C01_INDIRECT_ZP_Y:
-                    begin
-                      next_state <= STATE_FETCH_IM_0;
-                      address_mode <= ADDRESS_MODE_INDIRECT_Y;
-                    end
-                  MODE_C01_ZP_X:
-                    begin
-                      next_state <= STATE_FETCH_IM_0;
-                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
-                    end
-                  MODE_C01_ABSOLUTE_Y:
-                    begin
-                      next_state <= STATE_FETCH_LO_0;
-                      address_mode <= ADDRESS_MODE_ABSOLUTE_Y;
-                    end
-                  MODE_C01_ABSOLUTE_X:
-                    begin
-                      next_state <= STATE_FETCH_LO_0;
-                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
-                    end
-                  default:
-                    begin
-                      next_state <= STATE_EXECUTE;
-                    end
-                endcase
-              end
-            end
-          2'b10:
-            begin
-              case (mode)
-                MODE_C10_IMMEDIATE:
-                  begin
-                    next_state <= STATE_FETCH_IM_0;
-                  end
-                MODE_C10_ZP:
-                  begin
-                    next_state <= STATE_FETCH_IM_0;
-                  end
-                MODE_C10_A:
-                  begin
-                    next_state <= STATE_EXECUTE;
-                  end
-                MODE_C10_ABSOLUTE:
-                  begin
-                    next_state <= STATE_FETCH_LO_0;
-                  end
-                MODE_C10_ZP_X:
-                  begin
-                    next_state <= STATE_FETCH_IM_0;
-                  end
-                MODE_C10_ABSOLUTE_X:
-                  begin
-                    next_state <= STATE_FETCH_LO_0;
-                  end
-                default:
-                  begin
-                    next_state <= STATE_EXECUTE;
-                  end
-              endcase
-            end
-          2'b11:
-            begin
-              next_state <= STATE_ERROR;
-            end
-        endcase
-      end
-    STATE_FETCH_LO_0:
-      begin
-        mem_address <= pc;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_LO_1;
-      end
-    STATE_FETCH_LO_1:
-      begin
-        arg[7:0] <= mem_data_out;
-        next_state <= STATE_FETCH_HI_0;
-        pc <= pc + 1;
-      end
-    STATE_FETCH_HI_0:
-      begin
-        mem_address <= pc;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_HI_1;
-      end
-    STATE_FETCH_HI_1:
-      begin
-        case (address_mode)
-          ADDRESS_MODE_ABSOLUTE:
-            begin
-              ea[15:0] <= { mem_data_out, arg[7:0] };
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_ABSOLUTE_X:
-            begin
-              ea[15:0] <= { mem_data_out, arg[7:0] } + reg_x;
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_ABSOLUTE_Y:
-            begin
-              ea[15:0] <= { mem_data_out, arg[7:0] } + reg_y;
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_ABSOLUTE16:
-            begin
-              ea[15:0] <= { mem_data_out, arg[7:0] };
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_JSR:
-            begin
-              arg[15:8] <= mem_data_out;
-              next_state <= STATE_PUSH_PC_LO_0;
-            end
-          default:
-            begin
-              arg[15:8] <= mem_data_out;
-              next_state <= STATE_EXECUTE;
-            end
-        endcase
-
-        pc <= pc + 1;
-      end
-    STATE_FETCH_IM_0:
-      begin
-        mem_address <= pc;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_IM_1;
-      end
-    STATE_FETCH_IM_1:
-      begin
-        arg[15:8] <= 0;
-        arg[7:0] <= mem_data_out;
-        ea[15:8] <= 0;
-
-        case (address_mode)
-          ADDRESS_MODE_ABSOLUTE:
-            begin
-              ea[7:0] <= mem_data_out;
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_ABSOLUTE_X:
-            begin
-              ea[7:0] <= mem_data_out + reg_x;
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_ABSOLUTE_Y:
-            begin
-              ea[7:0] <= mem_data_out + reg_y;
-              next_state <= STATE_FETCH_ABS_0;
-            end
-          ADDRESS_MODE_INDIRECT_X:
-            begin
-              ea[7:0] <= mem_data_out + reg_x;
-              next_state <= STATE_FETCH_IND_LO_0;
-            end
-          ADDRESS_MODE_INDIRECT_Y:
-            begin
-              ea[7:0] <= mem_data_out;
-              next_state <= STATE_FETCH_IND_LO_0;
-            end
-          default:
-            begin
-              next_state <= STATE_EXECUTE;
-            end
-        endcase
-
-        pc <= pc + 1;
-      end
-    STATE_FETCH_IND_LO_0:
-      begin
-        mem_address <= ea;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_IND_LO_1;
-      end
-    STATE_FETCH_IND_LO_1:
-      begin
-        arg[15:8] <= 0;
-        arg[7:0] <= mem_data_out;
-        next_state <= STATE_FETCH_IND_HI_0;
-      end
-    STATE_FETCH_IND_HI_0:
-      begin
-        mem_address <= ea + 1;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_IND_HI_1;
-      end
-    STATE_FETCH_IND_HI_1:
-      begin
-        if (address_mode == ADDRESS_MODE_INDIRECT_Y)
-          ea[7:0] <= { mem_data_out, arg[7:0] } + reg_y;
-        else
-          ea[15:8] <= mem_data_out;
-          ea[7:0] <= arg[7:0];
-
-        next_state <= STATE_FETCH_ABS_0;
-      end
-    STATE_FETCH_ABS_0:
-      begin
-        mem_address <= ea;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_ABS_1;
-      end
-    STATE_FETCH_ABS_1:
-      begin
-        arg[15:8] <= 0;
-        arg[7:0] <= mem_data_out;
-        next_state <= STATE_EXECUTE;
-      end
-    STATE_EXECUTE:
-      begin
-//joe
- //       reg_x <= 170;
-        case (instruction[1:0])
-          2'b00:
-            begin
-              case (instruction[7:2])
-                OPCODE_BNE:
-                  begin
-                    if (flag_zero == 1)
-                      begin
-                        pc <= (mem_address + ($signed(arg[7:0]) + 0)) & 16'hffff;
-                        //pc <= 16'b0101010110101010;
-                        next_state <= STATE_FETCH_OP_0;
-                      end
-                  end
-                OPCODE_CLC: flag_carry <= 0;
-                OPCODE_SEC: flag_carry <= 1;
-                OPCODE_CLI: flag_interrupt <= 0;
-                OPCODE_SEI: flag_interrupt <= 1;
-                OPCODE_TYA: reg_a <= reg_y;
-                OPCODE_CLV: flag_overflow <= 0;
-                OPCODE_CLD: flag_decimal <= 0;
-                OPCODE_SED: flag_decimal <= 1;
-                OPCODE_PHP:
-                  begin
-                    mem_address <= sp;
-                    mem_data_in <= flags;
-                    mem_write_enable <= 1;
-                    sp <= sp - 1;
-                  end
-                OPCODE_PLP:
-                  begin
-                    mem_address <= sp + 1;
-                    mem_write_enable <= 0;
-                    sp <= sp + 1;
-                  end
-                OPCODE_PHA:
-                  begin
-                    mem_address <= sp;
-                    mem_data_in <= reg_a;
-                    mem_write_enable <= 1;
-                    sp <= sp - 1;
-                  end
-                OPCODE_PLA:
-                  begin
-                    mem_address <= sp + 1;
-                    mem_write_enable <= 0;
-                    sp <= sp + 1;
-                  end
-                OPCODE_DEY: reg_y <= reg_y - 1;
-                OPCODE_TAY: reg_y <= reg_a;
-                OPCODE_INY: reg_y <= reg_y + 1;
-                OPCODE_INX: reg_x <= reg_x + 1;
-                default:
-                  begin
-                    case (operation)
-                      OP_JMP:
-                        begin
-                          pc <= mem_address;
-                          next_state <= STATE_FETCH_OP_0;
-                        end
-                      OP_JMP_IND: pc <= arg[7:0];
-                      OP_STY:     arg[7:0] <= reg_y;
-                      OP_LDY:     reg_y <= arg[7:0];
-                      OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
-                      OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
-                    endcase
-                  end
-              endcase
-
-              if (mode == 3'b110 || mode == 3'b010)
-                if (instruction[7:2] == OPCODE_PHP ||
-                    instruction[7:2] == OPCODE_PHA)
-                  next_state <= STATE_FINISH_PUSH;
-                else if (instruction[7:2] == OPCODE_PLP ||
-                         instruction[7:2] == OPCODE_PLA)
-                  next_state <= STATE_FINISH_POP;
-                else
-                  next_state <= STATE_FETCH_OP_0;
-              else if (operation == OP_STY)
-                next_state <= STATE_STORE_ARG_0;
-              else if (operation == OP_CPY || operation == OP_INY ||
-                       operation == OP_DEY || operation == OP_TAY ||
-                       operation == OP_LDY)
-                next_state <= STATE_WRITEBACK_Y;
-              else if (operation == OP_CPX || operation == OP_INX)
-                next_state <= STATE_WRITEBACK_X;
-              else if (operation == OP_TYA)
-                next_state <= STATE_WRITEBACK_A;
-            end
-          2'b01:
-            begin
-              case (operation)
-                OP_ORA: arg <= reg_a | arg;
-                OP_AND: arg <= reg_a & arg;
-                OP_EOR: arg <= reg_a ^ arg;
-                OP_ADC: arg <= reg_a + arg + flag_carry;
-                OP_STA: arg <= reg_a;
-                OP_LDA: reg_a <= arg;
-                OP_CMP: arg <= { flag_carry, reg_a } - arg;
-                OP_SBC: arg <= { flag_carry, reg_a } - arg;
-              endcase
-
-              if (operation == OP_STA)
-                next_state <= STATE_STORE_ARG_0;
-              else
-                next_state <= STATE_WRITEBACK_A;
-            end
-          2'b10:
-            begin
-              if (mode == 3'b010 || mode == 3'b110) begin
-                case (instruction[7:2])
-                  OPCODE_TXA:
-                    begin
-                      reg_a <= reg_x;
-                      next_state <= STATE_WRITEBACK_A;
-                    end
-                  OPCODE_TXS:
-                    begin
-                      sp <= reg_x;
-                      next_state <= STATE_FETCH_OP_0;
-                    end
-                  OPCODE_TAX:
-                    begin
-                      reg_x <= reg_a;
-                      next_state <= STATE_WRITEBACK_X;
-                    end
-                  OPCODE_TSX:
-                    begin
-                      reg_x <= sp;
-                      next_state <= STATE_WRITEBACK_X;
-                    end
-                  OPCODE_DEX:
-                    begin
-                      reg_x <= reg_x - 1;
-                      next_state <= STATE_WRITEBACK_X;
-                    end
-                  OPCODE_NOP: next_state <= STATE_FETCH_OP_0;
-                  default: next_state <= STATE_FETCH_OP_0;
-                endcase
-              end else begin
-                case (operation)
-                  OP_ASL: begin arg[7:1] <= arg[6:0]; arg[0] <= 0; flag_carry <= arg[7]; end
-                  OP_ROL: begin arg[7:1] <= arg[6:0]; arg[0] <= flag_carry; flag_carry <= arg[7]; end
-                  OP_LSR: begin arg[6:0] <= arg[7:1]; arg[7] <= 0; flag_carry <= arg[0]; end
-                  OP_ROR: begin arg[6:0] <= arg[7:1]; arg[7] <= flag_carry; flag_carry <= arg[0]; end
-                  OP_STX: arg[7:0] <= reg_x;
-                  OP_LDX: reg_x <= arg[7:0];
-                  OP_DEC: arg[7:0] <= arg[7:0] - 1;
-                  OP_INC: arg[7:0] <= arg[7:0] + 1;
-                endcase
-
-                if (operation == OP_LDX)
-                  next_state <= STATE_WRITEBACK_X;
-                else if (operation == OP_STX)
-                  next_state <= STATE_STORE_ARG_0;
-                else
-                  next_state <= STATE_FETCH_OP_0;
-              end
-            end
-          2'b11:
-            begin
-              next_state <= STATE_ERROR;
-            end
-        endcase
-      end
-    STATE_WRITEBACK_A:
-      begin
-        flag_carry <= arg[8];
-        flag_negative <= arg[7];
-        flag_zero <= arg[7:0] == 0;
-        if (operation != OP_CMP) reg_a <= arg[7:0];
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_WRITEBACK_X:
-      begin
-        if (operation != OP_DEX) flag_carry <= arg[8];
-        flag_negative <= arg[7];
-        flag_zero <= arg[7:0] == 0;
-        if (operation != OP_CPX) reg_x <= arg[7:0];
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_WRITEBACK_Y:
-      begin
-        if (operation != OP_DEY) flag_carry <= arg[8];
-        flag_negative <= arg[7];
-        flag_zero <= arg[7:0] == 0;
-        if (operation != OP_CPY) reg_y <= arg[7:0];
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_STORE_ARG_0:
-      begin
-        mem_address <= ea;
-        mem_data_in <= arg;
-        mem_write_enable <= 1;
-        next_state <= STATE_STORE_ARG_1;
-      end
-    STATE_STORE_ARG_1:
-      begin
-        // Finish writeback of result to memory.
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_FINISH_PUSH:
-      begin
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_FINISH_POP:
-      begin
-        if (instruction[7:2] == OPCODE_PLP)
-          begin
-            flag_negative <= mem_data_out[7];
-            flag_overflow <= mem_data_out[6];
-            flag_break <= mem_data_out[4];
-            flag_decimal <= mem_data_out[3];
-            flag_interrupt <= mem_data_out[2];
-            flag_zero <= mem_data_out[1];
-            flag_carry <= mem_data_out[0];
-          end
-        else
-          reg_a <= mem_data_out;
-
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_POP_SR_0:
-      begin
-        mem_address <= sp + 1;
-        mem_write_enable <= 0;
-        sp <= sp + 1;
-      end
-    STATE_POP_SR_1:
-      begin
-        flag_negative <= mem_data_out[7];
-        flag_overflow <= mem_data_out[6];
-        flag_break <= mem_data_out[4];
-        flag_decimal <= mem_data_out[3];
-        flag_interrupt <= mem_data_out[2];
-        flag_zero <= mem_data_out[1];
-        flag_carry <= mem_data_out[0];
-
-        next_state <= STATE_POP_PC_LO_0;
-      end
-    STATE_POP_PC_LO_0:
-      begin
-        mem_address <= sp + 1;
-        mem_write_enable <= 0;
-        sp <= sp + 1;
-      end
-    STATE_POP_PC_LO_1:
-      begin
-        pc[7:0] <= mem_data_out;
-      end
-    STATE_POP_PC_HI_0:
-      begin
-        mem_address <= sp + 1;
-        mem_write_enable <= 0;
-        sp <= sp + 1;
-      end
-    STATE_POP_PC_HI_1:
-      begin
-        pc[15:8] <= mem_data_out;
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_PUSH_PC_LO_0:
-      begin
-        mem_address <= sp;
-        mem_data_in <= pc[7:0];
-        mem_write_enable <= 1;
-        sp <= sp - 1;
-      end
-    STATE_PUSH_PC_LO_1:
-      begin
-        mem_write_enable <= 0;
-      end
-    STATE_PUSH_PC_HI_0:
-      begin
-        mem_address <= sp;
-        mem_data_in <= pc[15:8];
-        mem_write_enable <= 1;
-        sp <= sp - 1;
-      end
-    STATE_PUSH_PC_HI_1:
-      begin
-        pc <= arg;
-        mem_write_enable <= 0;
-        next_state <= STATE_FETCH_OP_0;
-      end
-    STATE_HALTED:
-      begin
-        if (!button_halt) begin
-          next_state <= STATE_FETCH_OP_0;
-          flag_break <= 0;
-        end else begin
-          next_state <= STATE_HALTED;
-          flag_break <= 1;
-        end
-
-        mem_write_enable <= 0;
-      end
-    STATE_ERROR:
-      begin
-        next_state <= STATE_ERROR;
-        mem_write_enable <= 0;
-      end
-    STATE_EEPROM_START:
-      begin
-        // Initialize values for reading from SPI-like EEPROM.
-        if (eeprom_ready) begin
-          eeprom_count <= 0;
-          next_state <= STATE_EEPROM_READ;
-        end
-      end
-    STATE_EEPROM_READ:
-      begin
-        // Set the next EEPROM address to read from and strobe.
-        eeprom_address <= eeprom_count;
-        mem_address <= eeprom_count;
-        eeprom_strobe <= 1;
-        next_state <= STATE_EEPROM_WAIT;
-      end
-    STATE_EEPROM_WAIT:
-      begin
-        // Wait until 8 bits are clocked in.
-        eeprom_strobe <= 0;
-
-        if (eeprom_ready) begin
-          mem_data_in <= eeprom_data_out;
-          eeprom_count <= eeprom_count + 1;
-          next_state <= STATE_EEPROM_WRITE;
-        end
-      end
-    STATE_EEPROM_WRITE:
-      begin
-        // Write value read from EEPROM into memory.
-        mem_write_enable <= 1;
-        next_state <= STATE_EEPROM_DONE;
-      end
-    STATE_EEPROM_DONE:
-      begin
-        // Finish writing and read next byte if needed.
-        mem_write_enable <= 0;
-
-        if (eeprom_count == 256)
-          next_state <= STATE_FETCH_OP_0;
-        else
-          next_state <= STATE_EEPROM_READ;
-      end
-  endcase
-end
-
-// On negative edge of clock, check reset and halt buttons and
-// change to next state of the CPU execution state machine.
-always @(negedge clk) begin
   if (!button_reset)
     state <= STATE_RESET;
   else if (!button_halt)
     state <= STATE_HALTED;
   else
-    state <= next_state;
+    case (state)
+      STATE_RESET:
+        begin
+          // FIXME: Set to appropriate value later and add 0x100.
+          sp <= 8'h0f;
+          flag_negative <= 0;
+          flag_overflow <= 0;
+          flag_break <= 0;
+          flag_decimal <= 0;
+          flag_interrupt <= 0;
+          flag_carry <= 0;
+          flag_zero <= 0;
+          mem_address <= 0;
+          mem_write_enable <= 0;
+          mem_data_in <= 0;
+          instruction <= 0;
+          delay_loop = 12000;
+          eeprom_strobe <= 0;
+          reg_a <= 0;
+          reg_x <= 0;
+          reg_y <= 0;
+          state <= STATE_DELAY_LOOP;
+          //state <= STATE_FETCH_OP_0;
+        end
+      STATE_DELAY_LOOP:
+        begin
+          // This is probably not needed. The chip starts up fine without it.
+          if (delay_loop == 0) begin
+
+            // If button is not pushed, start rom.v code otherwise use EEPROM.
+            //if (button_program_select)
+              pc <= 16'h4000;
+            //else
+            //  pc <= 0;
+
+            //state <= STATE_EEPROM_START;
+            state <= STATE_FETCH_OP_0;
+          end else begin
+            delay_loop <= delay_loop - 1;
+          end
+        end
+      STATE_FETCH_OP_0:
+        begin
+          mem_address <= pc;
+          mem_write_enable <= 1'b0;
+          state <= STATE_FETCH_OP_1;
+        end
+      STATE_FETCH_OP_1:
+        begin
+          instruction <= mem_data_out;
+          state <= STATE_START;
+          pc <= pc + 1;
+        end
+      STATE_START:
+        begin
+          case (instruction[1:0])
+            2'b00:
+              begin
+                case (mode)
+                  3'b000:
+                    begin
+                      case (operation)
+                        OP_BRK:
+                          begin
+                            state <= STATE_HALTED;
+                            address_mode <= ADDRESS_MODE_NONE;
+                          end
+                        OP_RTI:
+                          begin
+                            state <= STATE_POP_SR_0;
+                            address_mode <= ADDRESS_MODE_NONE;
+                          end
+                        OP_RTS:
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_JSR;
+                          end
+                        OP_JSR:
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_NONE;
+                          end
+                        OP_JMP:
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_NONE;
+                          end
+                        OP_JMP_IND:
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_ABSOLUTE16;
+                          end
+                        default:
+                          begin
+  //                          state <= STATE_EXECUTE;
+                            state <= STATE_FETCH_IM_0;
+                            address_mode <= ADDRESS_MODE_NONE;
+                          end
+                      endcase
+                    end
+                  3'b010:
+                    begin
+                      address_mode <= ADDRESS_MODE_NONE;
+                      state <= STATE_EXECUTE;
+                    end
+                  3'b110:
+                    begin
+                      address_mode <= ADDRESS_MODE_NONE;
+                      state <= STATE_EXECUTE;
+                    end
+  //                MODE_C00_IMMEDIATE:
+  //                  begin
+  //                    state <= STATE_FETCH_IM_0;
+  //                    address_mode <= ADDRESS_MODE_NONE;
+  //                  end
+                  MODE_C00_ZP:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE;
+                    end
+                  MODE_C00_ABSOLUTE:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE;
+                    end
+                  MODE_C00_ZP_X:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                    end
+                  MODE_C00_ABSOLUTE_X:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                    end
+                endcase
+              end
+            2'b01:
+              begin
+                if (operation == OP_STA) begin
+                  state <= STATE_EXECUTE;
+                end else begin
+                  case (mode)
+                    MODE_C01_INDIRECT_ZP_X:
+                      begin
+                        state <= STATE_FETCH_IM_0;
+                        address_mode <= ADDRESS_MODE_INDIRECT_X;
+                      end
+                    MODE_C01_ZP:
+                      begin
+                        state <= STATE_FETCH_IM_0;
+                        address_mode <= ADDRESS_MODE_ABSOLUTE;
+                      end
+                    MODE_C01_IMMEDIATE:
+                      begin
+                        state <= STATE_FETCH_IM_0;
+                        address_mode <= ADDRESS_MODE_NONE;
+                      end
+                    MODE_C01_ABSOLUTE:
+                      begin
+                        state <= STATE_FETCH_LO_0;
+                        address_mode <= ADDRESS_MODE_ABSOLUTE;
+                      end
+                    MODE_C01_INDIRECT_ZP_Y:
+                      begin
+                        state <= STATE_FETCH_IM_0;
+                        address_mode <= ADDRESS_MODE_INDIRECT_Y;
+                      end
+                    MODE_C01_ZP_X:
+                      begin
+                        state <= STATE_FETCH_IM_0;
+                        address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                      end
+                    MODE_C01_ABSOLUTE_Y:
+                      begin
+                        state <= STATE_FETCH_LO_0;
+                        address_mode <= ADDRESS_MODE_ABSOLUTE_Y;
+                      end
+                    MODE_C01_ABSOLUTE_X:
+                      begin
+                        state <= STATE_FETCH_LO_0;
+                        address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                      end
+                    default:
+                      begin
+                        state <= STATE_EXECUTE;
+                      end
+                  endcase
+                end
+              end
+            2'b10:
+              begin
+                case (mode)
+                  MODE_C10_IMMEDIATE:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                    end
+                  MODE_C10_ZP:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                    end
+                  MODE_C10_A:
+                    begin
+                      state <= STATE_EXECUTE;
+                    end
+                  MODE_C10_ABSOLUTE:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                    end
+                  MODE_C10_ZP_X:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                    end
+                  MODE_C10_ABSOLUTE_X:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                    end
+                  default:
+                    begin
+                      state <= STATE_EXECUTE;
+                    end
+                endcase
+              end
+            2'b11:
+              begin
+                state <= STATE_ERROR;
+              end
+          endcase
+        end
+      STATE_FETCH_LO_0:
+        begin
+          mem_address <= pc;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_LO_1;
+        end
+      STATE_FETCH_LO_1:
+        begin
+          arg[7:0] <= mem_data_out;
+          state <= STATE_FETCH_HI_0;
+          pc <= pc + 1;
+        end
+      STATE_FETCH_HI_0:
+        begin
+          mem_address <= pc;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_HI_1;
+        end
+      STATE_FETCH_HI_1:
+        begin
+          case (address_mode)
+            ADDRESS_MODE_ABSOLUTE:
+              begin
+                ea[15:0] <= { mem_data_out, arg[7:0] };
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_ABSOLUTE_X:
+              begin
+                ea[15:0] <= { mem_data_out, arg[7:0] } + reg_x;
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_ABSOLUTE_Y:
+              begin
+                ea[15:0] <= { mem_data_out, arg[7:0] } + reg_y;
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_ABSOLUTE16:
+              begin
+                ea[15:0] <= { mem_data_out, arg[7:0] };
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_JSR:
+              begin
+                arg[15:8] <= mem_data_out;
+                state <= STATE_PUSH_PC_LO_0;
+              end
+            default:
+              begin
+                arg[15:8] <= mem_data_out;
+                state <= STATE_EXECUTE;
+              end
+          endcase
+
+          pc <= pc + 1;
+        end
+      STATE_FETCH_IM_0:
+        begin
+          mem_address <= pc;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_IM_1;
+        end
+      STATE_FETCH_IM_1:
+        begin
+          arg[15:8] <= 0;
+          arg[7:0] <= mem_data_out;
+          ea[15:8] <= 0;
+
+          case (address_mode)
+            ADDRESS_MODE_ABSOLUTE:
+              begin
+                ea[7:0] <= mem_data_out;
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_ABSOLUTE_X:
+              begin
+                ea[7:0] <= mem_data_out + reg_x;
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_ABSOLUTE_Y:
+              begin
+                ea[7:0] <= mem_data_out + reg_y;
+                state <= STATE_FETCH_ABS_0;
+              end
+            ADDRESS_MODE_INDIRECT_X:
+              begin
+                ea[7:0] <= mem_data_out + reg_x;
+                state <= STATE_FETCH_IND_LO_0;
+              end
+            ADDRESS_MODE_INDIRECT_Y:
+              begin
+                ea[7:0] <= mem_data_out;
+                state <= STATE_FETCH_IND_LO_0;
+              end
+            default:
+              begin
+                state <= STATE_EXECUTE;
+              end
+          endcase
+
+          pc <= pc + 1;
+        end
+      STATE_FETCH_IND_LO_0:
+        begin
+          mem_address <= ea;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_IND_LO_1;
+        end
+      STATE_FETCH_IND_LO_1:
+        begin
+          arg[15:8] <= 0;
+          arg[7:0] <= mem_data_out;
+          state <= STATE_FETCH_IND_HI_0;
+        end
+      STATE_FETCH_IND_HI_0:
+        begin
+          mem_address <= ea + 1;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_IND_HI_1;
+        end
+      STATE_FETCH_IND_HI_1:
+        begin
+          if (address_mode == ADDRESS_MODE_INDIRECT_Y)
+            ea[7:0] <= { mem_data_out, arg[7:0] } + reg_y;
+          else
+            ea[15:8] <= mem_data_out;
+            ea[7:0] <= arg[7:0];
+
+          state <= STATE_FETCH_ABS_0;
+        end
+      STATE_FETCH_ABS_0:
+        begin
+          mem_address <= ea;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_ABS_1;
+        end
+      STATE_FETCH_ABS_1:
+        begin
+          arg[15:8] <= 0;
+          arg[7:0] <= mem_data_out;
+          state <= STATE_EXECUTE;
+        end
+      STATE_EXECUTE:
+        begin
+  //joe
+   //       reg_x <= 170;
+          case (instruction[1:0])
+            2'b00:
+              begin
+                case (instruction[7:2])
+                  OPCODE_BNE:
+                    begin
+                      if (flag_zero == 1)
+                        begin
+                          pc <= (mem_address + ($signed(arg[7:0]) + 0)) & 16'hffff;
+                          //pc <= 16'b0101010110101010;
+                          state <= STATE_FETCH_OP_0;
+                        end
+                    end
+                  OPCODE_CLC: flag_carry <= 0;
+                  OPCODE_SEC: flag_carry <= 1;
+                  OPCODE_CLI: flag_interrupt <= 0;
+                  OPCODE_SEI: flag_interrupt <= 1;
+                  OPCODE_TYA: reg_a <= reg_y;
+                  OPCODE_CLV: flag_overflow <= 0;
+                  OPCODE_CLD: flag_decimal <= 0;
+                  OPCODE_SED: flag_decimal <= 1;
+                  OPCODE_PHP:
+                    begin
+                      mem_address <= sp;
+                      mem_data_in <= flags;
+                      mem_write_enable <= 1;
+                      sp <= sp - 1;
+                    end
+                  OPCODE_PLP:
+                    begin
+                      mem_address <= sp + 1;
+                      mem_write_enable <= 0;
+                      sp <= sp + 1;
+                    end
+                  OPCODE_PHA:
+                    begin
+                      mem_address <= sp;
+                      mem_data_in <= reg_a;
+                      mem_write_enable <= 1;
+                      sp <= sp - 1;
+                    end
+                  OPCODE_PLA:
+                    begin
+                      mem_address <= sp + 1;
+                      mem_write_enable <= 0;
+                      sp <= sp + 1;
+                    end
+                  OPCODE_DEY: reg_y <= reg_y - 1;
+                  OPCODE_TAY: reg_y <= reg_a;
+                  OPCODE_INY: reg_y <= reg_y + 1;
+                  OPCODE_INX: reg_x <= reg_x + 1;
+                  default:
+                    begin
+                      case (operation)
+                        OP_JMP:
+                          begin
+                            pc <= mem_address;
+                            state <= STATE_FETCH_OP_0;
+                          end
+                        OP_JMP_IND: pc <= arg[7:0];
+                        OP_STY:     arg[7:0] <= reg_y;
+                        OP_LDY:     reg_y <= arg[7:0];
+                        OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
+                        OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
+                      endcase
+                    end
+                endcase
+
+                if (mode == 3'b110 || mode == 3'b010)
+                  if (instruction[7:2] == OPCODE_PHP ||
+                      instruction[7:2] == OPCODE_PHA)
+                    state <= STATE_FINISH_PUSH;
+                  else if (instruction[7:2] == OPCODE_PLP ||
+                           instruction[7:2] == OPCODE_PLA)
+                    state <= STATE_FINISH_POP;
+                  else
+                    state <= STATE_FETCH_OP_0;
+                else if (operation == OP_STY)
+                  state <= STATE_STORE_ARG_0;
+                else if (operation == OP_CPY || operation == OP_INY ||
+                         operation == OP_DEY || operation == OP_TAY ||
+                         operation == OP_LDY)
+                  state <= STATE_WRITEBACK_Y;
+                else if (operation == OP_CPX || operation == OP_INX)
+                  state <= STATE_WRITEBACK_X;
+                else if (operation == OP_TYA)
+                  state <= STATE_WRITEBACK_A;
+              end
+            2'b01:
+              begin
+                case (operation)
+                  OP_ORA: arg <= reg_a | arg;
+                  OP_AND: arg <= reg_a & arg;
+                  OP_EOR: arg <= reg_a ^ arg;
+                  OP_ADC: arg <= reg_a + arg + flag_carry;
+                  OP_STA: arg <= reg_a;
+                  OP_LDA: reg_a <= arg;
+                  OP_CMP: arg <= { flag_carry, reg_a } - arg;
+                  OP_SBC: arg <= { flag_carry, reg_a } - arg;
+                endcase
+
+                if (operation == OP_STA)
+                  state <= STATE_STORE_ARG_0;
+                else
+                  state <= STATE_WRITEBACK_A;
+              end
+            2'b10:
+              begin
+                if (mode == 3'b010 || mode == 3'b110) begin
+                  case (instruction[7:2])
+                    OPCODE_TXA:
+                      begin
+                        reg_a <= reg_x;
+                        state <= STATE_WRITEBACK_A;
+                      end
+                    OPCODE_TXS:
+                      begin
+                        sp <= reg_x;
+                        state <= STATE_FETCH_OP_0;
+                      end
+                    OPCODE_TAX:
+                      begin
+                        reg_x <= reg_a;
+                        state <= STATE_WRITEBACK_X;
+                      end
+                    OPCODE_TSX:
+                      begin
+                        reg_x <= sp;
+                        state <= STATE_WRITEBACK_X;
+                      end
+                    OPCODE_DEX:
+                      begin
+                        reg_x <= reg_x - 1;
+                        state <= STATE_WRITEBACK_X;
+                      end
+                    OPCODE_NOP: state <= STATE_FETCH_OP_0;
+                    default: state <= STATE_FETCH_OP_0;
+                  endcase
+                end else begin
+                  case (operation)
+                    OP_ASL: begin arg[7:1] <= arg[6:0]; arg[0] <= 0; flag_carry <= arg[7]; end
+                    OP_ROL: begin arg[7:1] <= arg[6:0]; arg[0] <= flag_carry; flag_carry <= arg[7]; end
+                    OP_LSR: begin arg[6:0] <= arg[7:1]; arg[7] <= 0; flag_carry <= arg[0]; end
+                    OP_ROR: begin arg[6:0] <= arg[7:1]; arg[7] <= flag_carry; flag_carry <= arg[0]; end
+                    OP_STX: arg[7:0] <= reg_x;
+                    OP_LDX: reg_x <= arg[7:0];
+                    OP_DEC: arg[7:0] <= arg[7:0] - 1;
+                    OP_INC: arg[7:0] <= arg[7:0] + 1;
+                  endcase
+
+                  if (operation == OP_LDX)
+                    state <= STATE_WRITEBACK_X;
+                  else if (operation == OP_STX)
+                    state <= STATE_STORE_ARG_0;
+                  else
+                    state <= STATE_FETCH_OP_0;
+                end
+              end
+            2'b11:
+              begin
+                state <= STATE_ERROR;
+              end
+          endcase
+        end
+      STATE_WRITEBACK_A:
+        begin
+          flag_carry <= arg[8];
+          flag_negative <= arg[7];
+          flag_zero <= arg[7:0] == 0;
+          if (operation != OP_CMP) reg_a <= arg[7:0];
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_WRITEBACK_X:
+        begin
+          if (operation != OP_DEX) flag_carry <= arg[8];
+          flag_negative <= arg[7];
+          flag_zero <= arg[7:0] == 0;
+          if (operation != OP_CPX) reg_x <= arg[7:0];
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_WRITEBACK_Y:
+        begin
+          if (operation != OP_DEY) flag_carry <= arg[8];
+          flag_negative <= arg[7];
+          flag_zero <= arg[7:0] == 0;
+          if (operation != OP_CPY) reg_y <= arg[7:0];
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_STORE_ARG_0:
+        begin
+          mem_address <= ea;
+          mem_data_in <= arg;
+          mem_write_enable <= 1;
+          state <= STATE_STORE_ARG_1;
+        end
+      STATE_STORE_ARG_1:
+        begin
+          // Finish writeback of result to memory.
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_FINISH_PUSH:
+        begin
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_FINISH_POP:
+        begin
+          if (instruction[7:2] == OPCODE_PLP)
+            begin
+              flag_negative <= mem_data_out[7];
+              flag_overflow <= mem_data_out[6];
+              flag_break <= mem_data_out[4];
+              flag_decimal <= mem_data_out[3];
+              flag_interrupt <= mem_data_out[2];
+              flag_zero <= mem_data_out[1];
+              flag_carry <= mem_data_out[0];
+            end
+          else
+            reg_a <= mem_data_out;
+
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_POP_SR_0:
+        begin
+          mem_address <= sp + 1;
+          mem_write_enable <= 0;
+          sp <= sp + 1;
+        end
+      STATE_POP_SR_1:
+        begin
+          flag_negative <= mem_data_out[7];
+          flag_overflow <= mem_data_out[6];
+          flag_break <= mem_data_out[4];
+          flag_decimal <= mem_data_out[3];
+          flag_interrupt <= mem_data_out[2];
+          flag_zero <= mem_data_out[1];
+          flag_carry <= mem_data_out[0];
+
+          state <= STATE_POP_PC_LO_0;
+        end
+      STATE_POP_PC_LO_0:
+        begin
+          mem_address <= sp + 1;
+          mem_write_enable <= 0;
+          sp <= sp + 1;
+        end
+      STATE_POP_PC_LO_1:
+        begin
+          pc[7:0] <= mem_data_out;
+        end
+      STATE_POP_PC_HI_0:
+        begin
+          mem_address <= sp + 1;
+          mem_write_enable <= 0;
+          sp <= sp + 1;
+        end
+      STATE_POP_PC_HI_1:
+        begin
+          pc[15:8] <= mem_data_out;
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_PUSH_PC_LO_0:
+        begin
+          mem_address <= sp;
+          mem_data_in <= pc[7:0];
+          mem_write_enable <= 1;
+          sp <= sp - 1;
+        end
+      STATE_PUSH_PC_LO_1:
+        begin
+          mem_write_enable <= 0;
+        end
+      STATE_PUSH_PC_HI_0:
+        begin
+          mem_address <= sp;
+          mem_data_in <= pc[15:8];
+          mem_write_enable <= 1;
+          sp <= sp - 1;
+        end
+      STATE_PUSH_PC_HI_1:
+        begin
+          pc <= arg;
+          mem_write_enable <= 0;
+          state <= STATE_FETCH_OP_0;
+        end
+      STATE_HALTED:
+        begin
+          if (!button_halt) begin
+            state <= STATE_FETCH_OP_0;
+            flag_break <= 0;
+          end else begin
+            state <= STATE_HALTED;
+            flag_break <= 1;
+          end
+
+          mem_write_enable <= 0;
+        end
+      STATE_ERROR:
+        begin
+          state <= STATE_ERROR;
+          mem_write_enable <= 0;
+        end
+      STATE_EEPROM_START:
+        begin
+          // Initialize values for reading from SPI-like EEPROM.
+          if (eeprom_ready) begin
+            eeprom_count <= 0;
+            state <= STATE_EEPROM_READ;
+          end
+        end
+      STATE_EEPROM_READ:
+        begin
+          // Set the next EEPROM address to read from and strobe.
+          eeprom_address <= eeprom_count;
+          mem_address <= eeprom_count;
+          eeprom_strobe <= 1;
+          state <= STATE_EEPROM_WAIT;
+        end
+      STATE_EEPROM_WAIT:
+        begin
+          // Wait until 8 bits are clocked in.
+          eeprom_strobe <= 0;
+
+          if (eeprom_ready) begin
+            mem_data_in <= eeprom_data_out;
+            eeprom_count <= eeprom_count + 1;
+            state <= STATE_EEPROM_WRITE;
+          end
+        end
+      STATE_EEPROM_WRITE:
+        begin
+          // Write value read from EEPROM into memory.
+          mem_write_enable <= 1;
+          state <= STATE_EEPROM_DONE;
+        end
+      STATE_EEPROM_DONE:
+        begin
+          // Finish writing and read next byte if needed.
+          mem_write_enable <= 0;
+
+          if (eeprom_count == 256)
+            state <= STATE_FETCH_OP_0;
+          else
+            state <= STATE_EEPROM_READ;
+        end
+    endcase
 end
 
 memory_bus memory_bus_0(
