@@ -122,12 +122,12 @@ end
 // This block simply drives the 8x4 LEDs.
 always @(posedge raw_clk) begin
   case (count[9:7])
-    3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_x; end
+    3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     //3'b000: begin column_value <= 4'b0111; leds_value <= ~arg[7:0]; end
     //3'b000: begin column_value <= 4'b0111; leds_value <= ~ea[7:0]; end
 
 //    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags[7:0]; end
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_x; end
     //3'b010: begin column_value <= 4'b1011; leds_value <= ~instruction; end
 
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
@@ -701,6 +701,8 @@ always @(posedge clk) begin
       end
     STATE_EXECUTE:
       begin
+//joe
+ //       reg_x <= 170;
         case (instruction[1:0])
           2'b00:
             begin
@@ -709,7 +711,7 @@ always @(posedge clk) begin
                   begin
                     if (flag_zero == 1)
                       begin
-                        pc <= (mem_address + ($signed(arg[7:0]) + 1)) & 16'hffff;
+                        pc <= (mem_address + ($signed(arg[7:0]) + 0)) & 16'hffff;
                         //pc <= 16'b0101010110101010;
                         next_state <= STATE_FETCH_OP_0;
                       end
@@ -824,7 +826,7 @@ always @(posedge clk) begin
                   OPCODE_TAX:
                     begin
                       reg_x <= reg_a;
-                      next_state <= STATE_WRITEBACK_A;
+                      next_state <= STATE_WRITEBACK_X;
                     end
                   OPCODE_TSX:
                     begin
