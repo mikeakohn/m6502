@@ -50,22 +50,6 @@ assign clk = clock_div[7];
 reg [7:0] reg_a = 0;
 reg [7:0] reg_x = 0;
 reg [7:0] reg_y = 0;
-//reg [7:0] reg_index [1:0];
-// wire [7:0] reg_x;
-// wire [7:0] reg_y;
-// assign reg_x = { reg_index[0] };
-// assign reg_y = { reg_index[1] };
-
-// ALU.
-/*
-reg [7:0] alu_data_0;
-reg [7:0] alu_data_1;
-reg [2:0] alu_command;
-wire [8:0] alu_result;
-reg [7:0] inc_result;
-reg [7:0] shift_result;
-reg shift_carry;
-*/
 
 //  Stack.
 reg [7:0] sp = 8'h00;
@@ -100,7 +84,7 @@ assign flags[1] = flag_zero;
 assign flags[0] = flag_carry;
 
 // Eeprom.
-reg  [8:0] eeprom_count;
+reg [8:0] eeprom_count;
 wire [7:0] eeprom_data_out;
 reg [10:0] eeprom_address;
 reg eeprom_strobe = 0;
@@ -121,17 +105,14 @@ end
 // This block simply drives the 8x4 LEDs.
 always @(posedge raw_clk) begin
   case (count[9:7])
+    // A
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
-    //3'b000: begin column_value <= 4'b0111; leds_value <= ~arg[7:0]; end
-    //3'b000: begin column_value <= 4'b0111; leds_value <= ~ea[7:0]; end
-
-//    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags[7:0]; end
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_x; end
-    //3'b010: begin column_value <= 4'b1011; leds_value <= ~instruction; end
-
-    3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
-    3'b110: begin column_value <= 4'b1110; leds_value <= ~pc[15:8]; end
-//    3'b110: begin column_value <= 4'b1110; leds_value <= ~state; end
+    // Y
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
+    // X
+    3'b100: begin column_value <= 4'b1101; leds_value <= ~reg_x; end
+    // PC (LSB)
+    3'b110: begin column_value <= 4'b1110; leds_value <= ~pc[7:0]; end
     default: begin column_value <= 4'b1111; leds_value <= 8'hff; end
   endcase
 end
@@ -202,7 +183,6 @@ parameter MODE_C01_ABSOLUTE_Y    = 3'b110; // ABSOLUTE, Y
 parameter MODE_C01_ABSOLUTE_X    = 3'b111; // ABSOLUTE, X
 
 // c = 10 aaa = op, bbb = mode
-
 parameter OP_ASL = 3'b000;
 parameter OP_ROL = 3'b001;
 parameter OP_LSR = 3'b010;
@@ -220,7 +200,6 @@ parameter MODE_C10_ZP_X       = 3'b101; // ZP, X
 parameter MODE_C10_ABSOLUTE_X = 3'b111; // ABSOLUTE, X
 
 // c = 00 aaa = op, bbb = mode
-
 parameter OP_BIT     = 3'b001;
 parameter OP_JMP     = 3'b010; // jmp ADDRESS
 parameter OP_JMP_IND = 3'b011; // jmp (ADDRESS)
@@ -231,11 +210,15 @@ parameter OP_CPX     = 3'b111;
 
 parameter MODE_C00_IMMEDIATE  = 3'b000; // #IMMEDIATE
 parameter MODE_C00_ZP         = 3'b001; // ZP
+parameter MODE_C00_SB_1       = 3'b010; // SINGLE-BYTE 1
 parameter MODE_C00_ABSOLUTE   = 3'b011; // ABSOLUTE
+parameter MODE_C00_RELATIVE   = 3'b100; // RELATIVE
 parameter MODE_C00_ZP_X       = 3'b101; // ZP, X
+parameter MODE_C00_SB_2       = 3'b110; // SINGLE-BYTE 2
 parameter MODE_C00_ABSOLUTE_X = 3'b111; // ABSOLUTE, X
 
 // c = 0, b = 4
+// keep for now
 /*
 parameter OP_BPL = 3'b000; // _100_00
 parameter OP_BMI = 3'b001; // _100_00
@@ -392,7 +375,7 @@ always @(posedge clk) begin
             2'b00:
               begin
                 case (mode)
-                  3'b000:
+                  MODE_C00_IMMEDIATE:
                     begin
                       case (operation)
                         OP_BRK:
@@ -427,27 +410,11 @@ always @(posedge clk) begin
                           end
                         default:
                           begin
-  //                          state <= STATE_EXECUTE;
                             state <= STATE_FETCH_IM_0;
                             address_mode <= ADDRESS_MODE_NONE;
                           end
                       endcase
                     end
-                  3'b010:
-                    begin
-                      address_mode <= ADDRESS_MODE_NONE;
-                      state <= STATE_EXECUTE;
-                    end
-                  3'b110:
-                    begin
-                      address_mode <= ADDRESS_MODE_NONE;
-                      state <= STATE_EXECUTE;
-                    end
-  //                MODE_C00_IMMEDIATE:
-  //                  begin
-  //                    state <= STATE_FETCH_IM_0;
-  //                    address_mode <= ADDRESS_MODE_NONE;
-  //                  end
                   MODE_C00_ZP:
                     begin
                       state <= STATE_FETCH_IM_0;
@@ -467,6 +434,21 @@ always @(posedge clk) begin
                     begin
                       state <= STATE_FETCH_LO_0;
                       address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                    end
+                  MODE_C00_SB_1:
+                    begin
+                      address_mode <= ADDRESS_MODE_NONE;
+                      state <= STATE_EXECUTE;
+                    end
+                  MODE_C00_SB_2:
+                    begin
+                      address_mode <= ADDRESS_MODE_NONE;
+                      state <= STATE_EXECUTE;
+                    end
+                  MODE_C00_RELATIVE:
+                    begin
+                      address_mode <= ADDRESS_MODE_NONE;
+                      state <= STATE_FETCH_IM_0;
                     end
                 endcase
               end
@@ -705,20 +687,15 @@ always @(posedge clk) begin
         end
       STATE_EXECUTE:
         begin
-  //joe
-   //       reg_x <= 170;
           case (instruction[1:0])
             2'b00:
               begin
                 case (instruction[7:2])
                   OPCODE_BNE:
                     begin
-                      if (flag_zero == 1)
-                        begin
-                          pc <= (mem_address + ($signed(arg[7:0]) + 0)) & 16'hffff;
-                          //pc <= 16'b0101010110101010;
-                          state <= STATE_FETCH_OP_0;
-                        end
+                      if (flag_zero == 0) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
                     end
                   OPCODE_CLC: flag_carry <= 0;
                   OPCODE_SEC: flag_carry <= 1;
@@ -881,18 +858,14 @@ always @(posedge clk) begin
         end
       STATE_WRITEBACK_X:
         begin
-          if (operation != OP_DEX) flag_carry <= arg[8];
-          flag_negative <= arg[7];
-          flag_zero <= arg[7:0] == 0;
-          if (operation != OP_CPX) reg_x <= arg[7:0];
+          flag_negative <= reg_x[7];
+          flag_zero <= reg_x[7:0] == 0;
           state <= STATE_FETCH_OP_0;
         end
       STATE_WRITEBACK_Y:
         begin
-          if (operation != OP_DEY) flag_carry <= arg[8];
-          flag_negative <= arg[7];
-          flag_zero <= arg[7:0] == 0;
-          if (operation != OP_CPY) reg_y <= arg[7:0];
+          flag_negative <= reg_y[7];
+          flag_zero <= reg_y[7:0] == 0;
           state <= STATE_FETCH_OP_0;
         end
       STATE_STORE_ARG_0:
