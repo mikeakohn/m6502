@@ -109,10 +109,10 @@ always @(posedge raw_clk) begin
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     // Y
     3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
-    // X
-    3'b100: begin column_value <= 4'b1101; leds_value <= ~reg_x; end
     // PC (LSB)
-    3'b110: begin column_value <= 4'b1110; leds_value <= ~pc[7:0]; end
+    3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
+    // PC (MSB)
+    3'b110: begin column_value <= 4'b1110; leds_value <= ~pc[15:8]; end
     default: begin column_value <= 4'b1111; leds_value <= 8'hff; end
   endcase
 end
@@ -691,9 +691,51 @@ always @(posedge clk) begin
             2'b00:
               begin
                 case (instruction[7:2])
+                  OPCODE_BPL:
+                    begin
+                      if (flag_negative == 0) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
+                  OPCODE_BMI:
+                    begin
+                      if (flag_negative == 1) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
+                  OPCODE_BVC:
+                    begin
+                      if (flag_overflow == 0) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
+                  OPCODE_BVS:
+                    begin
+                      if (flag_overflow == 1) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
+                  OPCODE_BCC:
+                    begin
+                      if (flag_carry == 0) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
+                  OPCODE_BCS:
+                    begin
+                      if (flag_carry == 1) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
                   OPCODE_BNE:
                     begin
                       if (flag_zero == 0) begin
+                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                      end
+                    end
+                  OPCODE_BEQ:
+                    begin
+                      if (flag_zero == 1) begin
                         pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                       end
                     end
@@ -761,6 +803,8 @@ always @(posedge clk) begin
                     state <= STATE_FINISH_POP;
                   else
                     state <= STATE_FETCH_OP_0;
+                else if (mode == 3'b100)
+                  state <= STATE_FETCH_OP_0;
                 else if (operation == OP_STY)
                   state <= STATE_STORE_ARG_0;
                 else if (operation == OP_CPY || operation == OP_INY ||
