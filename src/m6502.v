@@ -210,25 +210,12 @@ parameter OP_CPX     = 3'b111;
 
 parameter MODE_C00_IMMEDIATE  = 3'b000; // #IMMEDIATE
 parameter MODE_C00_ZP         = 3'b001; // ZP
-parameter MODE_C00_SB_1       = 3'b010; // SINGLE-BYTE 1
+parameter MODE_C00_SINGLE_1   = 3'b010; // SINGLE BYTE 1
 parameter MODE_C00_ABSOLUTE   = 3'b011; // ABSOLUTE
 parameter MODE_C00_RELATIVE   = 3'b100; // RELATIVE
 parameter MODE_C00_ZP_X       = 3'b101; // ZP, X
-parameter MODE_C00_SB_2       = 3'b110; // SINGLE-BYTE 2
+parameter MODE_C00_SINGLE_2   = 3'b110; // SINGLE BYTE 2
 parameter MODE_C00_ABSOLUTE_X = 3'b111; // ABSOLUTE, X
-
-// c = 0, b = 4
-// keep for now
-/*
-parameter OP_BPL = 3'b000; // _100_00
-parameter OP_BMI = 3'b001; // _100_00
-parameter OP_BVC = 3'b010; // _100_00
-parameter OP_BVS = 3'b011; // _100_00
-parameter OP_BCC = 3'b100; // _100_00
-parameter OP_BCS = 3'b101; // _100_00
-parameter OP_BNE = 3'b110; // _100_00
-parameter OP_BEQ = 3'b111; // _100_00
-*/
 
 // c = 0, b = 0.
 parameter OP_BRK = 3'b000; // _000_00;
@@ -435,12 +422,12 @@ always @(posedge clk) begin
                       state <= STATE_FETCH_LO_0;
                       address_mode <= ADDRESS_MODE_ABSOLUTE_X;
                     end
-                  MODE_C00_SB_1:
+                  MODE_C00_SINGLE_1:
                     begin
                       address_mode <= ADDRESS_MODE_NONE;
                       state <= STATE_EXECUTE;
                     end
-                  MODE_C00_SB_2:
+                  MODE_C00_SINGLE_2:
                     begin
                       address_mode <= ADDRESS_MODE_NONE;
                       state <= STATE_EXECUTE;
@@ -794,7 +781,7 @@ always @(posedge clk) begin
                     end
                 endcase
 
-                if (mode == 3'b110 || mode == 3'b010)
+                if (mode == MODE_C00_SINGLE_1 || mode == MODE_C00_SINGLE_2)
                   if (instruction[7:2] == OPCODE_PHP ||
                       instruction[7:2] == OPCODE_PHA)
                     state <= STATE_FINISH_PUSH;
@@ -803,7 +790,7 @@ always @(posedge clk) begin
                     state <= STATE_FINISH_POP;
                   else
                     state <= STATE_FETCH_OP_0;
-                else if (mode == 3'b100)
+                else if (mode == MODE_C00_RELATIVE)
                   state <= STATE_FETCH_OP_0;
                 else if (operation == OP_STY)
                   state <= STATE_STORE_ARG_0;
