@@ -44,7 +44,7 @@ reg [7:0] state = 0;
 reg [19:0] clock_div;
 reg [14:0] delay_loop;
 wire clk;
-assign clk = clock_div[7];
+assign clk = clock_div[9];
 
 // Registers.
 reg [7:0] reg_a = 0;
@@ -208,6 +208,15 @@ parameter OP_LDY     = 3'b101;
 parameter OP_CPY     = 3'b110;
 parameter OP_CPX     = 3'b111;
 
+parameter OP_BPL     = 3'b000;
+parameter OP_BMI     = 3'b001;
+parameter OP_BVC     = 3'b010;
+parameter OP_BVS     = 3'b011;
+parameter OP_BCC     = 3'b100;
+parameter OP_BCS     = 3'b101;
+parameter OP_BNE     = 3'b110;
+parameter OP_BEQ     = 3'b111;
+
 parameter MODE_C00_IMMEDIATE  = 3'b000; // #IMMEDIATE
 parameter MODE_C00_ZP         = 3'b001; // ZP
 parameter MODE_C00_SINGLE_1   = 3'b010; // SINGLE BYTE 1
@@ -253,6 +262,7 @@ parameter OP_TAX = 3'b101; // _010_10;
 parameter OP_DEX = 3'b110; // _010_10;
 parameter OP_NOP = 3'b111; // _010_10;
 
+/*
 parameter OPCODE_BPL = 8'h10 >> 2; // 000_100_00
 parameter OPCODE_BMI = 8'h30 >> 2; // 001_100_00
 parameter OPCODE_BVC = 8'h50 >> 2; // 010_100_00
@@ -261,6 +271,7 @@ parameter OPCODE_BCC = 8'h90 >> 2; // 100_100_00
 parameter OPCODE_BCS = 8'hb0 >> 2; // 101_100_00
 parameter OPCODE_BNE = 8'hd0 >> 2; // 110_100_00
 parameter OPCODE_BEQ = 8'hf0 >> 2; // 111_100_00
+*/
 
 parameter OPCODE_PHP = 8'h08 >> 2; // 000_010_00
 parameter OPCODE_PLP = 8'h28 >> 2; // 001_010_00
@@ -307,7 +318,7 @@ always @(posedge clk) begin
       STATE_RESET:
         begin
           // FIXME: Set to appropriate value later and add 0x100.
-          sp <= 8'h0f;
+          sp <= 8'h3f;
           flag_negative <= 0;
           flag_overflow <= 0;
           flag_break <= 0;
@@ -434,8 +445,8 @@ always @(posedge clk) begin
                     end
                   MODE_C00_RELATIVE:
                     begin
-                      address_mode <= ADDRESS_MODE_NONE;
                       state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_NONE;
                     end
                 endcase
               end
@@ -678,6 +689,7 @@ always @(posedge clk) begin
             2'b00:
               begin
                 case (instruction[7:2])
+/*
                   OPCODE_BPL:
                     begin
                       if (flag_negative == 0) begin
@@ -726,6 +738,7 @@ always @(posedge clk) begin
                         pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                       end
                     end
+*/
                   OPCODE_CLC: flag_carry <= 0;
                   OPCODE_SEC: flag_carry <= 1;
                   OPCODE_CLI: flag_interrupt <= 0;
@@ -765,20 +778,97 @@ always @(posedge clk) begin
                   OPCODE_INY: reg_y <= reg_y + 1;
                   OPCODE_INX: reg_x <= reg_x + 1;
                   default:
-                    begin
-                      case (operation)
-                        OP_JMP:
-                          begin
-                            pc <= mem_address;
-                            state <= STATE_FETCH_OP_0;
-                          end
-                        OP_JMP_IND: pc <= arg[7:0];
-                        OP_STY:     arg[7:0] <= reg_y;
-                        OP_LDY:     reg_y <= arg[7:0];
-                        OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
-                        OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
-                      endcase
-                    end
+                    case (mode)
+/*
+                      MODE_C00_IMMEDIATE:
+                        case (operation)
+                        endcase
+                      MODE_C00_ZP:
+                        case (operation)
+                        endcase
+                      MODE_C00_SINGLE_1:
+                        case (operation)
+                        endcase
+                      MODE_C00_ABSOLUTE:
+                        case (operation)
+                        endcase
+*/
+                      MODE_C00_RELATIVE:
+                        case (operation)
+                          OP_BPL:
+                            begin
+                              if (flag_negative == 0) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BMI:
+                            begin
+                              if (flag_negative == 1) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BVC:
+                            begin
+                              if (flag_overflow == 0) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BVS:
+                            begin
+                              if (flag_overflow == 1) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BCC:
+                            begin
+                              if (flag_carry == 0) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BCS:
+                            begin
+                              if (flag_carry == 1) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BNE:
+                            begin
+                              if (flag_zero == 0) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                          OP_BEQ:
+                            begin
+                              if (flag_zero == 1) begin
+                                pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
+                              end
+                            end
+                        endcase
+/*
+                      MODE_C00_ZP_X:
+                        case (operation)
+                        endcase
+                      MODE_C00_SINGLE_2:
+                        case (operation)
+                        endcase
+                      MODE_C00_ABSOLUTE_X:
+                        case (operation)
+                        endcase
+*/
+                      default:
+                        case (operation)
+                          OP_JMP:
+                            begin
+                              pc <= mem_address;
+                              state <= STATE_FETCH_OP_0;
+                            end
+                          OP_JMP_IND: pc <= arg[7:0];
+                          OP_STY:     arg[7:0] <= reg_y;
+                          OP_LDY:     reg_y <= arg[7:0];
+                          OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
+                          OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
+                        endcase
+                    endcase
                 endcase
 
                 if (mode == MODE_C00_SINGLE_1 || mode == MODE_C00_SINGLE_2)
@@ -971,7 +1061,6 @@ always @(posedge clk) begin
       STATE_POP_PC_HI_1:
         begin
           pc[15:8] <= mem_data_out;
-          state <= STATE_FETCH_OP_0;
         end
       STATE_PUSH_PC_LO_0:
         begin
