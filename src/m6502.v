@@ -388,13 +388,13 @@ always @(posedge clk) begin
                           end
                         OP_RTS:
                           begin
-                            state <= STATE_FETCH_LO_0;
-                            address_mode <= ADDRESS_MODE_JSR;
+                            state <= STATE_POP_PC_LO_0;
+                            address_mode <= ADDRESS_MODE_NONE;
                           end
                         OP_JSR:
                           begin
                             state <= STATE_FETCH_LO_0;
-                            address_mode <= ADDRESS_MODE_NONE;
+                            address_mode <= ADDRESS_MODE_JSR;
                           end
                         OP_JMP:
                           begin
@@ -863,6 +863,16 @@ always @(posedge clk) begin
                               state <= STATE_FETCH_OP_0;
                             end
                           OP_JMP_IND: pc <= arg[7:0];
+                          OP_JSR:
+                            begin
+                              pc <= mem_address;
+                              state <= STATE_FETCH_OP_0;
+                            end
+                          OP_RTS:
+                            begin
+                              pc <= arg[15:0];
+                              state <= STATE_FETCH_OP_0;
+                            end
                           OP_STY:     arg[7:0] <= reg_y;
                           OP_LDY:     reg_y <= arg[7:0];
                           OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
@@ -1047,20 +1057,24 @@ always @(posedge clk) begin
           mem_address <= sp + 1;
           mem_write_enable <= 0;
           sp <= sp + 1;
+          state <= STATE_POP_PC_LO_1;
         end
       STATE_POP_PC_LO_1:
         begin
-          pc[7:0] <= mem_data_out;
+          pc[15:8] <= mem_data_out;
+          state <= STATE_POP_PC_HI_0;
         end
       STATE_POP_PC_HI_0:
         begin
           mem_address <= sp + 1;
           mem_write_enable <= 0;
           sp <= sp + 1;
+          state <= STATE_POP_PC_HI_1;
         end
       STATE_POP_PC_HI_1:
         begin
-          pc[15:8] <= mem_data_out;
+          pc[7:0] <= mem_data_out;
+          state <= STATE_FETCH_OP_0;
         end
       STATE_PUSH_PC_LO_0:
         begin
@@ -1068,10 +1082,12 @@ always @(posedge clk) begin
           mem_data_in <= pc[7:0];
           mem_write_enable <= 1;
           sp <= sp - 1;
+          state <= STATE_PUSH_PC_LO_1;
         end
       STATE_PUSH_PC_LO_1:
         begin
           mem_write_enable <= 0;
+          state <= STATE_PUSH_PC_HI_0;
         end
       STATE_PUSH_PC_HI_0:
         begin
@@ -1079,6 +1095,7 @@ always @(posedge clk) begin
           mem_data_in <= pc[15:8];
           mem_write_enable <= 1;
           sp <= sp - 1;
+          state <= STATE_PUSH_PC_HI_1;
         end
       STATE_PUSH_PC_HI_1:
         begin
