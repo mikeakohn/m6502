@@ -18,6 +18,7 @@ module memory_bus
   input [15:0] address,
   input  [7:0] data_in,
   output [7:0] data_out,
+  input bus_enable,
   input write_enable,
   input clk,
   input raw_clk,
@@ -31,68 +32,46 @@ module memory_bus
 wire [7:0] rom_data_out;
 wire [7:0] ram_data_out;
 wire [7:0] peripherals_data_out;
+wire [7:0] block_ram_data_out;
 
-reg [7:0] ram_data_in;
-reg [7:0] peripherals_data_in;
+//reg [7:0] ram_data_in;
+//reg [7:0] peripherals_data_in;
 
-reg ram_write_enable;
-reg peripherals_write_enable;
+wire ram_write_enable;
+wire peripherals_write_enable;
+wire block_ram_write_enable;
 
-// Based on the selected bank of memory (address[15:14]) select if
-// memory should read from ram.v, rom.v, peripherals.v or hardcoded 0.
+assign ram_write_enable = (address[15:14] == 2'b00) && write_enable;
+assign peripherals_write_enable = (address[15:14] == 2'b10) && write_enable;
+assign block_ram_write_enable = (address[15:14] == 2'b11) && write_enable;
+
+// FIXME: The RAM probably need an enable also.
+wire peripherals_enable;
+assign peripherals_enable = (address[15:14] == 2'b10) && bus_enable;
+
+// Based on the selected bank of memory (address[14:13]) select if
+// memory should read from ram.v, rom.v, peripherals.v.
 assign data_out = address[15] == 0 ?
-  (address[14] == 0 ? ram_data_out : rom_data_out) :
-  (address[14] == 0 ? peripherals_data_out : 0);
-
-// Based on the selected bank of memory, decided which module the
-// memory write should be sent to.
-always @(posedge clk) begin
-  if (write_enable) begin
-    case (address[15:14])
-      2'b00:
-        begin
-          ram_data_in <= data_in;
-          ram_write_enable <= 1;
-        end
-      2'b01:
-        begin
-          ram_write_enable <= 0;
-          peripherals_write_enable <= 0;
-        end
-      2'b10:
-        begin
-          peripherals_data_in <= data_in;
-          peripherals_write_enable <= 1;
-        end
-      2'b11:
-        begin
-          ram_write_enable <= 0;
-          peripherals_write_enable <= 0;
-        end
-    endcase
-  end else begin
-    ram_write_enable <= 0;
-    peripherals_write_enable <= 0;
-  end
-end
+  (address[14] == 0 ? ram_data_out         : rom_data_out) :
+  (address[14] == 0 ? peripherals_data_out : block_ram_data_out);
 
 rom rom_0(
-  .address   (address[5:0]),
+  .address   (address[9:0]),
   .data_out  (rom_data_out),
-  .raw_clk   (raw_clk)
+  .clk   (raw_clk)
 );
 
 ram ram_0(
-  .address      (address[8:0]),
-  .data_in      (ram_data_in),
+  .address      (address[9:0]),
+  .data_in      (data_in),
   .data_out     (ram_data_out),
   .write_enable (ram_write_enable),
-  .raw_clk      (raw_clk)
+  .clk          (raw_clk)
 );
 
 peripherals peripherals_0(
   .address      (address[5:0]),
-  .data_in      (peripherals_data_in),
+  .data_in      (data_in),
   .data_out     (peripherals_data_out),
   .write_enable (peripherals_write_enable),
   .clk          (clk),
@@ -102,6 +81,16 @@ peripherals peripherals_0(
   .ioport_0     (ioport_0),
   .button_0     (button_0),
   .reset        (reset)
+);
+
+
+ram ram_1(
+  .address      (address[9:0]),
+  //.data_in      (ram_1_data_in),
+  .data_in      (data_in),
+  .data_out     (block_ram_data_out),
+  .write_enable (block_ram_write_enable),
+  .clk          (raw_clk)
 );
 
 endmodule

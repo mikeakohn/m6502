@@ -11,23 +11,24 @@
 
 module rom
 (
-  input [5:0] address,
+  input [9:0] address,
 //  output reg [7:0] data_out,
   output reg [7:0] data_out,
-  input raw_clk
+  input clk
 );
 
 //reg [7:0] data;
 //assign data_out = data;
 
-reg [7:0] memory [63:0];
+reg [7:0] memory [1023:0];
 
 initial begin
   $readmemh("rom.txt", memory);
 end
 
-always @(posedge raw_clk) begin
-  data_out <= memory[address[5:0]];
+always @(posedge clk) begin
+//  data_out <= memory[address[9:0]];
+  data_out <= memory[address[9:0]];
 end
 
 endmodule

@@ -36,6 +36,7 @@ assign column = column_value;
 reg [15:0] mem_address = 0;
 reg [7:0] mem_data_in = 0;
 wire [7:0] mem_data_out;
+reg mem_bus_enable = 0;
 reg mem_write_enable = 0;
 
 // Clock.
@@ -327,6 +328,7 @@ always @(posedge clk) begin
           flag_carry <= 0;
           flag_zero <= 0;
           mem_address <= 0;
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
           mem_data_in <= 0;
           instruction <= 0;
@@ -358,11 +360,13 @@ always @(posedge clk) begin
       STATE_FETCH_OP_0:
         begin
           mem_address <= pc;
-          mem_write_enable <= 1'b0;
+          mem_bus_enable <= 1;
+          mem_write_enable <= 0;
           state <= STATE_FETCH_OP_1;
         end
       STATE_FETCH_OP_1:
         begin
+          mem_bus_enable <= 0;
           instruction <= mem_data_out;
           state <= STATE_START;
           pc <= pc + 1;
@@ -545,11 +549,13 @@ always @(posedge clk) begin
       STATE_FETCH_LO_0:
         begin
           mem_address <= pc;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           state <= STATE_FETCH_LO_1;
         end
       STATE_FETCH_LO_1:
         begin
+          mem_bus_enable <= 0;
           arg[7:0] <= mem_data_out;
           state <= STATE_FETCH_HI_0;
           pc <= pc + 1;
@@ -557,11 +563,13 @@ always @(posedge clk) begin
       STATE_FETCH_HI_0:
         begin
           mem_address <= pc;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           state <= STATE_FETCH_HI_1;
         end
       STATE_FETCH_HI_1:
         begin
+          mem_bus_enable <= 0;
           case (address_mode)
             ADDRESS_MODE_ABSOLUTE:
               begin
@@ -600,11 +608,13 @@ always @(posedge clk) begin
       STATE_FETCH_IM_0:
         begin
           mem_address <= pc;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           state <= STATE_FETCH_IM_1;
         end
       STATE_FETCH_IM_1:
         begin
+          mem_bus_enable <= 0;
           arg[15:8] <= 0;
           arg[7:0] <= mem_data_out;
           ea[15:8] <= 0;
@@ -646,11 +656,13 @@ always @(posedge clk) begin
       STATE_FETCH_IND_LO_0:
         begin
           mem_address <= ea;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           state <= STATE_FETCH_IND_LO_1;
         end
       STATE_FETCH_IND_LO_1:
         begin
+          mem_bus_enable <= 0;
           arg[15:8] <= 0;
           arg[7:0] <= mem_data_out;
           state <= STATE_FETCH_IND_HI_0;
@@ -658,11 +670,13 @@ always @(posedge clk) begin
       STATE_FETCH_IND_HI_0:
         begin
           mem_address <= ea + 1;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           state <= STATE_FETCH_IND_HI_1;
         end
       STATE_FETCH_IND_HI_1:
         begin
+          mem_bus_enable <= 0;
           if (address_mode == ADDRESS_MODE_INDIRECT_Y)
             ea[7:0] <= { mem_data_out, arg[7:0] } + reg_y;
           else
@@ -674,11 +688,13 @@ always @(posedge clk) begin
       STATE_FETCH_ABS_0:
         begin
           mem_address <= ea;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           state <= STATE_FETCH_ABS_1;
         end
       STATE_FETCH_ABS_1:
         begin
+          mem_bus_enable <= 0;
           arg[15:8] <= 0;
           arg[7:0] <= mem_data_out;
           state <= STATE_EXECUTE;
@@ -701,12 +717,14 @@ always @(posedge clk) begin
                     begin
                       mem_address <= sp;
                       mem_data_in <= flags;
+                      mem_bus_enable <= 1;
                       mem_write_enable <= 1;
                       sp <= sp - 1;
                     end
                   OPCODE_PLP:
                     begin
                       mem_address <= sp + 1;
+                      mem_bus_enable <= 1;
                       mem_write_enable <= 0;
                       sp <= sp + 1;
                     end
@@ -714,12 +732,14 @@ always @(posedge clk) begin
                     begin
                       mem_address <= sp;
                       mem_data_in <= reg_a;
+                      mem_bus_enable <= 1;
                       mem_write_enable <= 1;
                       sp <= sp - 1;
                     end
                   OPCODE_PLA:
                     begin
                       mem_address <= sp + 1;
+                      mem_bus_enable <= 1;
                       mem_write_enable <= 0;
                       sp <= sp + 1;
                     end
@@ -953,17 +973,20 @@ always @(posedge clk) begin
         begin
           mem_address <= ea;
           mem_data_in <= arg;
+          mem_bus_enable <= 1;
           mem_write_enable <= 1;
           state <= STATE_STORE_ARG_1;
         end
       STATE_STORE_ARG_1:
         begin
           // Finish writeback of result to memory.
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
           state <= STATE_FETCH_OP_0;
         end
       STATE_FINISH_PUSH:
         begin
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
           state <= STATE_FETCH_OP_0;
         end
@@ -982,16 +1005,19 @@ always @(posedge clk) begin
           else
             reg_a <= mem_data_out;
 
+          mem_bus_enable <= 0;
           state <= STATE_FETCH_OP_0;
         end
       STATE_POP_SR_0:
         begin
           mem_address <= sp + 1;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           sp <= sp + 1;
         end
       STATE_POP_SR_1:
         begin
+          mem_bus_enable <= 0;
           flag_negative <= mem_data_out[7];
           flag_overflow <= mem_data_out[6];
           flag_break <= mem_data_out[4];
@@ -1005,24 +1031,28 @@ always @(posedge clk) begin
       STATE_POP_PC_LO_0:
         begin
           mem_address <= sp + 1;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           sp <= sp + 1;
           state <= STATE_POP_PC_LO_1;
         end
       STATE_POP_PC_LO_1:
         begin
+          mem_bus_enable <= 0;
           pc[15:8] <= mem_data_out;
           state <= STATE_POP_PC_HI_0;
         end
       STATE_POP_PC_HI_0:
         begin
           mem_address <= sp + 1;
+          mem_bus_enable <= 1;
           mem_write_enable <= 0;
           sp <= sp + 1;
           state <= STATE_POP_PC_HI_1;
         end
       STATE_POP_PC_HI_1:
         begin
+          mem_bus_enable <= 0;
           pc[7:0] <= mem_data_out;
           state <= STATE_FETCH_OP_0;
         end
@@ -1030,12 +1060,14 @@ always @(posedge clk) begin
         begin
           mem_address <= sp;
           mem_data_in <= pc[7:0];
+          mem_bus_enable <= 1;
           mem_write_enable <= 1;
           sp <= sp - 1;
           state <= STATE_PUSH_PC_LO_1;
         end
       STATE_PUSH_PC_LO_1:
         begin
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
           state <= STATE_PUSH_PC_HI_0;
         end
@@ -1043,6 +1075,7 @@ always @(posedge clk) begin
         begin
           mem_address <= sp;
           mem_data_in <= pc[15:8];
+          mem_bus_enable <= 1;
           mem_write_enable <= 1;
           sp <= sp - 1;
           state <= STATE_PUSH_PC_HI_1;
@@ -1050,6 +1083,7 @@ always @(posedge clk) begin
       STATE_PUSH_PC_HI_1:
         begin
           pc <= arg;
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
           state <= STATE_FETCH_OP_0;
         end
@@ -1120,6 +1154,7 @@ memory_bus memory_bus_0(
   .address      (mem_address),
   .data_in      (mem_data_in),
   .data_out     (mem_data_out),
+  .bus_enable   (mem_bus_enable),
   .write_enable (mem_write_enable),
   .clk          (clk),
   .raw_clk      (raw_clk),
