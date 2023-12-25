@@ -689,56 +689,6 @@ always @(posedge clk) begin
             2'b00:
               begin
                 case (instruction[7:2])
-/*
-                  OPCODE_BPL:
-                    begin
-                      if (flag_negative == 0) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BMI:
-                    begin
-                      if (flag_negative == 1) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BVC:
-                    begin
-                      if (flag_overflow == 0) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BVS:
-                    begin
-                      if (flag_overflow == 1) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BCC:
-                    begin
-                      if (flag_carry == 0) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BCS:
-                    begin
-                      if (flag_carry == 1) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BNE:
-                    begin
-                      if (flag_zero == 0) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-                  OPCODE_BEQ:
-                    begin
-                      if (flag_zero == 1) begin
-                        pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
-                      end
-                    end
-*/
                   OPCODE_CLC: flag_carry <= 0;
                   OPCODE_SEC: flag_carry <= 1;
                   OPCODE_CLI: flag_interrupt <= 0;
