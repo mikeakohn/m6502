@@ -676,13 +676,13 @@ always @(posedge clk) begin
         end
       STATE_FETCH_IND_HI_1:
         begin
-          mem_bus_enable <= 0;
           if (address_mode == ADDRESS_MODE_INDIRECT_Y)
             ea[7:0] <= { mem_data_out, arg[7:0] } + reg_y;
           else
             ea[15:8] <= mem_data_out;
             ea[7:0] <= arg[7:0];
 
+          mem_bus_enable <= 0;
           state <= STATE_FETCH_ABS_0;
         end
       STATE_FETCH_ABS_0:
@@ -694,9 +694,9 @@ always @(posedge clk) begin
         end
       STATE_FETCH_ABS_1:
         begin
-          mem_bus_enable <= 0;
           arg[15:8] <= 0;
           arg[7:0] <= mem_data_out;
+          mem_bus_enable <= 0;
           state <= STATE_EXECUTE;
         end
       STATE_EXECUTE:
@@ -925,14 +925,43 @@ always @(posedge clk) begin
                   endcase
                 end else begin
                   case (operation)
-                    OP_ASL: begin arg[7:1] <= arg[6:0]; arg[0] <= 0; flag_carry <= arg[7]; end
-                    OP_ROL: begin arg[7:1] <= arg[6:0]; arg[0] <= flag_carry; flag_carry <= arg[7]; end
-                    OP_LSR: begin arg[6:0] <= arg[7:1]; arg[7] <= 0; flag_carry <= arg[0]; end
-                    OP_ROR: begin arg[6:0] <= arg[7:1]; arg[7] <= flag_carry; flag_carry <= arg[0]; end
-                    OP_STX: arg[7:0] <= reg_x;
-                    OP_LDX: reg_x <= arg[7:0];
-                    OP_DEC: arg[7:0] <= arg[7:0] - 1;
-                    OP_INC: arg[7:0] <= arg[7:0] + 1;
+                    OP_ASL:
+                      begin
+                        arg[7:1] <= arg[6:0]; arg[0] <= 0;
+                        flag_carry <= arg[7];
+                      end
+                    OP_ROL:
+                      begin
+                        arg[7:1] <= arg[6:0];
+                        arg[0] <= flag_carry;
+                        flag_carry <= arg[7];
+                      end
+                    OP_LSR:
+                      begin
+                        arg[6:0] <= arg[7:1];
+                        arg[7] <= 0; flag_carry <= arg[0];
+                      end
+                    OP_ROR:
+                      begin
+                        arg[6:0] <= arg[7:1];
+                        arg[7] <= flag_carry; flag_carry <= arg[0];
+                      end
+                    OP_STX:
+                      begin
+                        arg[7:0] <= reg_x;
+                      end
+                    OP_LDX:
+                      begin
+                        reg_x <= arg[7:0];
+                      end
+                    OP_DEC:
+                      begin
+                        arg[7:0] <= arg[7:0] - 1;
+                      end
+                    OP_INC:
+                      begin
+                        arg[7:0] <= arg[7:0] + 1;
+                      end
                   endcase
 
                   if (operation == OP_LDX)
@@ -1097,11 +1126,13 @@ always @(posedge clk) begin
             flag_break <= 1;
           end
 
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
         end
       STATE_ERROR:
         begin
           state <= STATE_ERROR;
+          mem_bus_enable <= 0;
           mem_write_enable <= 0;
         end
       STATE_EEPROM_START:
