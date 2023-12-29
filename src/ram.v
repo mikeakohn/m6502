@@ -18,7 +18,7 @@ module ram
   input clk
 );
 
-reg [7:0] memory [63:0];
+reg [7:0] memory [1023:0];
 
 always @(posedge clk) begin
   if (write_enable) begin
