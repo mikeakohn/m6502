@@ -45,7 +45,9 @@ reg [7:0] state = 0;
 reg [19:0] clock_div;
 reg [14:0] delay_loop;
 wire clk;
-assign clk = clock_div[9];
+
+// Lower this (down to one) to increase speed.
+assign clk = clock_div[13];
 
 // Registers.
 reg [7:0] reg_a = 0;
@@ -332,7 +334,7 @@ always @(posedge clk) begin
           mem_write_enable <= 0;
           mem_data_in <= 0;
           instruction <= 0;
-          delay_loop = 12000;
+          delay_loop = 100;
           eeprom_strobe <= 0;
           reg_a <= 0;
           reg_x <= 0;
@@ -456,56 +458,52 @@ always @(posedge clk) begin
               end
             2'b01:
               begin
-                if (operation == OP_STA) begin
-                  state <= STATE_EXECUTE;
-                end else begin
-                  case (mode)
-                    MODE_C01_INDIRECT_ZP_X:
-                      begin
-                        state <= STATE_FETCH_IM_0;
-                        address_mode <= ADDRESS_MODE_INDIRECT_X;
-                      end
-                    MODE_C01_ZP:
-                      begin
-                        state <= STATE_FETCH_IM_0;
-                        address_mode <= ADDRESS_MODE_ABSOLUTE;
-                      end
-                    MODE_C01_IMMEDIATE:
-                      begin
-                        state <= STATE_FETCH_IM_0;
-                        address_mode <= ADDRESS_MODE_NONE;
-                      end
-                    MODE_C01_ABSOLUTE:
-                      begin
-                        state <= STATE_FETCH_LO_0;
-                        address_mode <= ADDRESS_MODE_ABSOLUTE;
-                      end
-                    MODE_C01_INDIRECT_ZP_Y:
-                      begin
-                        state <= STATE_FETCH_IM_0;
-                        address_mode <= ADDRESS_MODE_INDIRECT_Y;
-                      end
-                    MODE_C01_ZP_X:
-                      begin
-                        state <= STATE_FETCH_IM_0;
-                        address_mode <= ADDRESS_MODE_ABSOLUTE_X;
-                      end
-                    MODE_C01_ABSOLUTE_Y:
-                      begin
-                        state <= STATE_FETCH_LO_0;
-                        address_mode <= ADDRESS_MODE_ABSOLUTE_Y;
-                      end
-                    MODE_C01_ABSOLUTE_X:
-                      begin
-                        state <= STATE_FETCH_LO_0;
-                        address_mode <= ADDRESS_MODE_ABSOLUTE_X;
-                      end
-                    default:
-                      begin
-                        state <= STATE_EXECUTE;
-                      end
-                  endcase
-                end
+                case (mode)
+                  MODE_C01_INDIRECT_ZP_X:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_INDIRECT_X;
+                    end
+                  MODE_C01_ZP:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE;
+                    end
+                  MODE_C01_IMMEDIATE:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_NONE;
+                    end
+                  MODE_C01_ABSOLUTE:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE;
+                    end
+                  MODE_C01_INDIRECT_ZP_Y:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_INDIRECT_Y;
+                    end
+                  MODE_C01_ZP_X:
+                    begin
+                      state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                    end
+                  MODE_C01_ABSOLUTE_Y:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_Y;
+                    end
+                  MODE_C01_ABSOLUTE_X:
+                    begin
+                      state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
+                    end
+                  default:
+                    begin
+                      state <= STATE_EXECUTE;
+                    end
+                endcase
               end
             2'b10:
               begin
@@ -988,22 +986,22 @@ always @(posedge clk) begin
         end
       STATE_WRITEBACK_X:
         begin
-          flag_negative <= reg_x[7];
-          flag_zero <= reg_x[7:0] == 0;
+          flag_negative <= arg[7];
+          flag_zero <= arg[7:0] == 0;
           state <= STATE_FETCH_OP_0;
         end
       STATE_WRITEBACK_Y:
         begin
-          flag_negative <= reg_y[7];
-          flag_zero <= reg_y[7:0] == 0;
+          flag_negative <= arg[7];
+          flag_zero <= arg[7:0] == 0;
           state <= STATE_FETCH_OP_0;
         end
       STATE_STORE_ARG_0:
         begin
-          mem_address <= ea;
-          mem_data_in <= arg;
           mem_bus_enable <= 1;
           mem_write_enable <= 1;
+          mem_address <= ea;
+          mem_data_in <= arg;
           state <= STATE_STORE_ARG_1;
         end
       STATE_STORE_ARG_1:
