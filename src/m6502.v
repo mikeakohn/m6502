@@ -47,7 +47,7 @@ reg [14:0] delay_loop;
 wire clk;
 
 // Lower this (down to one) to increase speed.
-assign clk = clock_div[13];
+assign clk = clock_div[15];
 
 // Registers.
 reg [7:0] reg_a = 0;
@@ -703,14 +703,46 @@ always @(posedge clk) begin
             2'b00:
               begin
                 case (instruction[7:2])
-                  OPCODE_CLC: flag_carry <= 0;
-                  OPCODE_SEC: flag_carry <= 1;
-                  OPCODE_CLI: flag_interrupt <= 0;
-                  OPCODE_SEI: flag_interrupt <= 1;
-                  OPCODE_TYA: reg_a <= reg_y;
-                  OPCODE_CLV: flag_overflow <= 0;
-                  OPCODE_CLD: flag_decimal <= 0;
-                  OPCODE_SED: flag_decimal <= 1;
+                  OPCODE_CLC:
+                    begin
+                      flag_carry <= 0;
+                      state <= STATE_FETCH_OP_0;
+                    end
+                  OPCODE_SEC:
+                    begin
+                      flag_carry <= 1;
+                      state <= STATE_FETCH_OP_0;
+                    end
+                  OPCODE_CLI:
+                    begin
+                      flag_interrupt <= 0;
+                      state <= STATE_FETCH_OP_0;
+                    end
+                  OPCODE_SEI:
+                    begin
+                      flag_interrupt <= 1;
+                      state <= STATE_FETCH_OP_0;
+                    end
+                  OPCODE_TYA:
+                    begin
+                      reg_a <= reg_y;
+                      state <= STATE_WRITEBACK_A;
+                    end
+                  OPCODE_CLV:
+                    begin
+                      flag_overflow <= 0;
+                      state <= STATE_FETCH_OP_0;
+                    end
+                  OPCODE_CLD:
+                    begin
+                      flag_decimal <= 0;
+                      state <= STATE_FETCH_OP_0;
+                    end
+                  OPCODE_SED:
+                    begin
+                      flag_decimal <= 1;
+                      state <= STATE_FETCH_OP_0;
+                    end
                   OPCODE_PHP:
                     begin
                       mem_address <= sp;
@@ -718,6 +750,7 @@ always @(posedge clk) begin
                       mem_bus_enable <= 1;
                       mem_write_enable <= 1;
                       sp <= sp - 1;
+                      state <= STATE_FINISH_PUSH;
                     end
                   OPCODE_PLP:
                     begin
@@ -725,6 +758,7 @@ always @(posedge clk) begin
                       mem_bus_enable <= 1;
                       mem_write_enable <= 0;
                       sp <= sp + 1;
+                      state <= STATE_FINISH_POP;
                     end
                   OPCODE_PHA:
                     begin
@@ -733,6 +767,7 @@ always @(posedge clk) begin
                       mem_bus_enable <= 1;
                       mem_write_enable <= 1;
                       sp <= sp - 1;
+                      state <= STATE_FINISH_PUSH;
                     end
                   OPCODE_PLA:
                     begin
@@ -740,11 +775,28 @@ always @(posedge clk) begin
                       mem_bus_enable <= 1;
                       mem_write_enable <= 0;
                       sp <= sp + 1;
+                      state <= STATE_FINISH_POP;
                     end
-                  OPCODE_DEY: reg_y <= reg_y - 1;
-                  OPCODE_TAY: reg_y <= reg_a;
-                  OPCODE_INY: reg_y <= reg_y + 1;
-                  OPCODE_INX: reg_x <= reg_x + 1;
+                  OPCODE_DEY:
+                    begin
+                      reg_y <= reg_y - 1;
+                      state <= STATE_WRITEBACK_Y;
+                    end
+                  OPCODE_TAY:
+                    begin
+                      arg <= reg_a;
+                      state <= STATE_WRITEBACK_Y;
+                    end
+                  OPCODE_INY:
+                    begin
+                      reg_y <= reg_y + 1;
+                      state <= STATE_WRITEBACK_Y;
+                    end
+                  OPCODE_INX:
+                    begin
+                      reg_x <= reg_x + 1;
+                      state <= STATE_WRITEBACK_X;
+                    end
                   default:
                     case (mode)
 /*
@@ -768,48 +820,56 @@ always @(posedge clk) begin
                               if (flag_negative == 0) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BMI:
                             begin
                               if (flag_negative == 1) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BVC:
                             begin
                               if (flag_overflow == 0) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BVS:
                             begin
                               if (flag_overflow == 1) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BCC:
                             begin
                               if (flag_carry == 0) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BCS:
                             begin
                               if (flag_carry == 1) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BNE:
                             begin
                               if (flag_zero == 0) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                           OP_BEQ:
                             begin
                               if (flag_zero == 1) begin
                                 pc <= $unsigned($signed(pc) + $signed(arg[7:0]));
                               end
+                              state <= STATE_FETCH_OP_0;
                             end
                         endcase
 /*
@@ -841,14 +901,56 @@ always @(posedge clk) begin
                               pc <= arg[15:0];
                               state <= STATE_FETCH_OP_0;
                             end
-                          OP_STY:     arg[7:0] <= reg_y;
-                          OP_LDY:     reg_y <= arg[7:0];
-                          OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
-                          OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
+                          OP_STY:
+                            begin
+                                arg[7:0] <= reg_y;
+                                state <= STATE_FETCH_OP_0;
+                            end
+                          OP_LDY:
+                            begin
+                                reg_y <= arg[7:0];
+                                state <= STATE_FETCH_OP_0;
+                            end
+                          OP_CPY:
+                            begin
+                                arg[7:0] <= reg_y - arg[7:0];
+                                state <= STATE_FETCH_OP_0;
+                            end
+                            OP_CPX:
+                            begin
+                                arg[7:0] <= reg_x - arg[7:0];
+                                state <= STATE_FETCH_OP_0;
+                            end
+//                          OP_CPY:     arg[7:0] <= { flag_carry, reg_y } - arg[7:0];
+//                          OP_CPX:     arg[7:0] <= { flag_carry, reg_x } - arg[7:0];
                         endcase
                     endcase
                 endcase
 
+//                if (mode == MODE_C00_RELATIVE)
+//                  state <= STATE_FETCH_OP_0;
+/*
+                if (mode == MODE_C00_SINGLE_1 && (instruction[7:2] == OPCODE_PHP || instruction[7:2] == OPCODE_PHA))
+                  state <= STATE_FINISH_PUSH;
+                else if (mode == MODE_C00_SINGLE_1 && (instruction[7:2] == OPCODE_PLP || instruction[7:2] == OPCODE_PLA))
+                  state <= STATE_FINISH_POP;
+                else if (operation == OP_STY)
+                  state <= STATE_STORE_ARG_0;
+                else if (operation == OP_CPY || operation == OP_INY ||
+                         operation == OP_DEY || operation == OP_TAY ||
+                         operation == OP_LDY)
+                  state <= STATE_WRITEBACK_Y;
+                else if (operation == OP_CPX || operation == OP_INX ||
+                         operation == OP_DEX || operation == OP_TAX ||
+                         operation == OP_LDX)
+                  state <= STATE_WRITEBACK_X;
+                else if (operation == OP_TYA)
+                  state <= STATE_WRITEBACK_A;
+*/
+
+//                else
+//                  state <= STATE_FETCH_OP_0;
+/*
                 if (mode == MODE_C00_SINGLE_1 || mode == MODE_C00_SINGLE_2)
                   if (instruction[7:2] == OPCODE_PHP ||
                       instruction[7:2] == OPCODE_PHA)
@@ -870,6 +972,7 @@ always @(posedge clk) begin
                   state <= STATE_WRITEBACK_X;
                 else if (operation == OP_TYA)
                   state <= STATE_WRITEBACK_A;
+*/
               end
             2'b01:
               begin
@@ -919,55 +1022,71 @@ always @(posedge clk) begin
                         state <= STATE_WRITEBACK_X;
                       end
                     OPCODE_NOP: state <= STATE_FETCH_OP_0;
-                    default: state <= STATE_FETCH_OP_0;
-                  endcase
-                end else begin
-                  case (operation)
-                    OP_ASL:
-                      begin
-                        arg[7:1] <= arg[6:0]; arg[0] <= 0;
-                        flag_carry <= arg[7];
-                      end
-                    OP_ROL:
-                      begin
-                        arg[7:1] <= arg[6:0];
-                        arg[0] <= flag_carry;
-                        flag_carry <= arg[7];
-                      end
-                    OP_LSR:
-                      begin
-                        arg[6:0] <= arg[7:1];
-                        arg[7] <= 0; flag_carry <= arg[0];
-                      end
-                    OP_ROR:
-                      begin
-                        arg[6:0] <= arg[7:1];
-                        arg[7] <= flag_carry; flag_carry <= arg[0];
-                      end
-                    OP_STX:
-                      begin
-                        arg[7:0] <= reg_x;
-                      end
-                    OP_LDX:
-                      begin
-                        reg_x <= arg[7:0];
-                      end
-                    OP_DEC:
-                      begin
-                        arg[7:0] <= arg[7:0] - 1;
-                      end
-                    OP_INC:
-                      begin
-                        arg[7:0] <= arg[7:0] + 1;
-                      end
+                    default:
+                      case (operation)
+                        OP_ASL:
+                          begin
+                            arg[7:1] <= arg[6:0];
+                            arg[0] <= 0;
+                            flag_carry <= arg[7];
+                            state <= STATE_FETCH_OP_0;
+                          end
+                        OP_ROL:
+                          begin
+/*
+                            arg[7:1] <= arg[6:0];
+                            arg[0] <= flag_carry;
+                            flag_carry <= arg[7];
+                            state <= STATE_WRITEBACK_A;
+*/
+                            arg <= (arg << 1) | (arg >> 8);
+                            arg[0] <= flag_carry;
+//                            flag_carry <= arg[8];
+//                            flag_negative <= arg[7];
+//                            flag_zero <= arg[7:0] == 0;
+                            state <= STATE_WRITEBACK_A;
+                          end
+                        OP_LSR:
+                          begin
+                            arg[6:0] <= arg[7:1];
+                            arg[7] <= 0; flag_carry <= arg[0];
+                            state <= STATE_FETCH_OP_0;
+                          end
+                        OP_ROR:
+                          begin
+                            arg[6:0] <= arg[7:1];
+                            arg[7] <= flag_carry; flag_carry <= arg[0];
+                            state <= STATE_FETCH_OP_0;
+                          end
+                        OP_STX:
+                          begin
+                            arg[7:0] <= reg_x;
+                            state <= STATE_STORE_ARG_0;
+                          end
+                        OP_LDX:
+                          begin
+                            reg_x <= arg[7:0];
+                            state <= STATE_WRITEBACK_X;
+                          end
+                        OP_DEC:
+                          begin
+                            arg[7:0] <= arg[7:0] - 1;
+                            state <= STATE_FETCH_OP_0;
+                          end
+                        OP_INC:
+                          begin
+                            arg[7:0] <= arg[7:0] + 1;
+                            state <= STATE_FETCH_OP_0;
+                          end
+                      endcase
                   endcase
 
-                  if (operation == OP_LDX)
-                    state <= STATE_WRITEBACK_X;
-                  else if (operation == OP_STX)
-                    state <= STATE_STORE_ARG_0;
-                  else
-                    state <= STATE_FETCH_OP_0;
+//                  if (operation == OP_LDX)
+//                    state <= STATE_WRITEBACK_X;
+//                  else if (operation == OP_STX)
+//                    state <= STATE_STORE_ARG_0;
+//                  else
+//                    state <= STATE_FETCH_OP_0;
                 end
               end
             2'b11:
@@ -978,22 +1097,24 @@ always @(posedge clk) begin
         end
       STATE_WRITEBACK_A:
         begin
-          flag_carry <= arg[8];
           flag_negative <= arg[7];
           flag_zero <= arg[7:0] == 0;
           if (operation != OP_CMP) reg_a <= arg[7:0];
+          if (operation != OP_LDA) flag_carry <= arg[8];
           state <= STATE_FETCH_OP_0;
         end
       STATE_WRITEBACK_X:
         begin
-          flag_negative <= arg[7];
-          flag_zero <= arg[7:0] == 0;
+          flag_negative <= reg_x[7];
+          flag_zero <= reg_x[7:0] == 0;
+//          if (operation != OP_CPX) reg_x <= arg[7:0];
           state <= STATE_FETCH_OP_0;
         end
       STATE_WRITEBACK_Y:
         begin
-          flag_negative <= arg[7];
-          flag_zero <= arg[7:0] == 0;
+          flag_negative <= reg_y[7];
+          flag_zero <= reg_y[7:0] == 0;
+//          if (operation != OP_CPY) reg_y <= arg[7:0];
           state <= STATE_FETCH_OP_0;
         end
       STATE_STORE_ARG_0:
