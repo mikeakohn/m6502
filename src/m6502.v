@@ -47,7 +47,7 @@ reg [14:0] delay_loop;
 wire clk;
 
 // Lower this (down to one) to increase speed.
-assign clk = clock_div[15];
+assign clk = clock_div[16];
 
 // Registers.
 reg [7:0] reg_a = 0;
@@ -111,7 +111,7 @@ always @(posedge raw_clk) begin
     // A
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     // Y
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags; end
     // PC (LSB)
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
     // PC (MSB)
@@ -1033,17 +1033,9 @@ always @(posedge clk) begin
                           end
                         OP_ROL:
                           begin
-/*
                             arg[7:1] <= arg[6:0];
                             arg[0] <= flag_carry;
                             flag_carry <= arg[7];
-                            state <= STATE_WRITEBACK_A;
-*/
-                            arg <= (arg << 1) | (arg >> 8);
-                            arg[0] <= flag_carry;
-//                            flag_carry <= arg[8];
-//                            flag_negative <= arg[7];
-//                            flag_zero <= arg[7:0] == 0;
                             state <= STATE_WRITEBACK_A;
                           end
                         OP_LSR:
@@ -1100,7 +1092,7 @@ always @(posedge clk) begin
           flag_negative <= arg[7];
           flag_zero <= arg[7:0] == 0;
           if (operation != OP_CMP) reg_a <= arg[7:0];
-          if (operation != OP_LDA) flag_carry <= arg[8];
+//          if (operation != OP_LDA) flag_carry <= arg[8];
           state <= STATE_FETCH_OP_0;
         end
       STATE_WRITEBACK_X:
