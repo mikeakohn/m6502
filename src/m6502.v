@@ -111,7 +111,7 @@ always @(posedge raw_clk) begin
     // A
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     // Y
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
     // PC (LSB)
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
     // PC (MSB)
@@ -1029,7 +1029,7 @@ always @(posedge clk) begin
                             arg[7:1] <= arg[6:0];
                             arg[0] <= 0;
                             flag_carry <= arg[7];
-                            state <= STATE_FETCH_OP_0;
+                            state <= STATE_WRITEBACK_A;
                           end
                         OP_ROL:
                           begin
@@ -1042,13 +1042,13 @@ always @(posedge clk) begin
                           begin
                             arg[6:0] <= arg[7:1];
                             arg[7] <= 0; flag_carry <= arg[0];
-                            state <= STATE_FETCH_OP_0;
+                            state <= STATE_WRITEBACK_A;
                           end
                         OP_ROR:
                           begin
                             arg[6:0] <= arg[7:1];
                             arg[7] <= flag_carry; flag_carry <= arg[0];
-                            state <= STATE_FETCH_OP_0;
+                            state <= STATE_WRITEBACK_A;
                           end
                         OP_STX:
                           begin
