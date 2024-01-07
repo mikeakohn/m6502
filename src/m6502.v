@@ -111,7 +111,7 @@ always @(posedge raw_clk) begin
     // A
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     // Y
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags; end
     // PC (LSB)
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
     // PC (MSB)
@@ -887,13 +887,13 @@ always @(posedge clk) begin
                         case (operation)
                           OP_JMP:
                             begin
-                              pc <= mem_address;
+                              pc <= ea;
                               state <= STATE_FETCH_OP_0;
                             end
                           OP_JMP_IND: pc <= arg[7:0];
                           OP_JSR:
                             begin
-                              pc <= mem_address;
+                              pc <= ea;
                               state <= STATE_FETCH_OP_0;
                             end
                           OP_RTS:
