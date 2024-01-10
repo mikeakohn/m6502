@@ -307,8 +307,7 @@ parameter ADDRESS_MODE_ABSOLUTE_X = 2;
 parameter ADDRESS_MODE_ABSOLUTE_Y = 3;
 parameter ADDRESS_MODE_INDIRECT_X = 4;
 parameter ADDRESS_MODE_INDIRECT_Y = 5;
-parameter ADDRESS_MODE_ABSOLUTE16 = 6;
-parameter ADDRESS_MODE_JSR =        7;
+parameter ADDRESS_MODE_JSR =        6;
 
 // This block is the main CPU instruction execute state machine.
 always @(posedge clk) begin
@@ -405,12 +404,12 @@ always @(posedge clk) begin
                         OP_JMP:
                           begin
                             state <= STATE_FETCH_LO_0;
-                            address_mode <= ADDRESS_MODE_NONE;
+                            address_mode <= ADDRESS_MODE_ABSOLUTE;
                           end
                         OP_JMP_IND:
                           begin
                             state <= STATE_FETCH_LO_0;
-                            address_mode <= ADDRESS_MODE_ABSOLUTE16;
+                            address_mode <= ADDRESS_MODE_ABSOLUTE;
                           end
                         default:
                           begin
@@ -511,26 +510,32 @@ always @(posedge clk) begin
                   MODE_C10_IMMEDIATE:
                     begin
                       state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_NONE;
                     end
                   MODE_C10_ZP:
                     begin
                       state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE;
                     end
                   MODE_C10_A:
                     begin
                       state <= STATE_EXECUTE;
+                      address_mode <= ADDRESS_MODE_NONE;
                     end
                   MODE_C10_ABSOLUTE:
                     begin
                       state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE;
                     end
                   MODE_C10_ZP_X:
                     begin
                       state <= STATE_FETCH_IM_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
                     end
                   MODE_C10_ABSOLUTE_X:
                     begin
                       state <= STATE_FETCH_LO_0;
+                      address_mode <= ADDRESS_MODE_ABSOLUTE_X;
                     end
                   default:
                     begin
@@ -582,11 +587,6 @@ always @(posedge clk) begin
             ADDRESS_MODE_ABSOLUTE_Y:
               begin
                 ea[15:0] <= { mem_data_out, arg[7:0] } + reg_y;
-                state <= STATE_FETCH_ABS_0;
-              end
-            ADDRESS_MODE_ABSOLUTE16:
-              begin
-                ea[15:0] <= { mem_data_out, arg[7:0] };
                 state <= STATE_FETCH_ABS_0;
               end
             ADDRESS_MODE_JSR:
@@ -1021,7 +1021,10 @@ always @(posedge clk) begin
                         reg_x <= reg_x - 1;
                         state <= STATE_WRITEBACK_X;
                       end
-                    OPCODE_NOP: state <= STATE_FETCH_OP_0;
+                    OPCODE_NOP:
+                      begin
+                        state <= STATE_FETCH_OP_0;
+                      end
                     default:
                       case (operation)
                         OP_ASL:
@@ -1036,7 +1039,7 @@ always @(posedge clk) begin
                             arg[7:1] <= arg[6:0];
                             arg[0] <= flag_carry;
                             flag_carry <= arg[7];
-                            state <= STATE_WRITEBACK_A;
+                            state <= STATE_WRITEBACK_A; 
                           end
                         OP_LSR:
                           begin
@@ -1068,6 +1071,10 @@ always @(posedge clk) begin
                         OP_INC:
                           begin
                             arg[7:0] <= arg[7:0] + 1;
+                            state <= STATE_FETCH_OP_0;
+                          end
+                        default:
+                          begin
                             state <= STATE_FETCH_OP_0;
                           end
                       endcase
