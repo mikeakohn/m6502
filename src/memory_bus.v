@@ -1,11 +1,11 @@
-// Intel 8008 FPGA Soft Processor 
+// 6502 FPGA Soft Processor
 //  Author: Michael Kohn
 //   Email: mike@mikekohn.net
 //     Web: https://www.mikekohn.net/
 //   Board: iceFUN iCE40 HX8K
 // License: MIT
 //
-// Copyright 2022 by Michael Kohn
+// Copyright 2024 by Michael Kohn, Joe Davisson
 
 // The purpose of this module is to route reads and writes to the 4
 // different memory banks. Originally the idea was to have ROM and RAM

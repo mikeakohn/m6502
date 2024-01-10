@@ -1,13 +1,13 @@
-// Intel 8008 FPGA Soft Processor 
+// 6502 FPGA Soft Processor
 //  Author: Michael Kohn
 //   Email: mike@mikekohn.net
 //     Web: https://www.mikekohn.net/
 //   Board: iceFUN iCE40 HX8K
 // License: MIT
 //
-// Copyright 2022 by Michael Kohn
+// Copyright 2024 by Michael Kohn, Joe Davisson
 
-// This creates 2048 bytes of RAM on the FPGA itself.
+// This creates 1024 bytes of RAM on the FPGA itself.
 
 module ram
 (

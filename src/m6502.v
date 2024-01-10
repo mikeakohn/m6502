@@ -5,7 +5,7 @@
 //   Board: iceFUN iCE40 HX8K
 // License: MIT
 //
-// Copyright 2023 by Michael Kohn
+// Copyright 2024 by Michael Kohn, Joe Davisson
 
 module m6502
 (
