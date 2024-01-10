@@ -7,18 +7,14 @@
 //
 // Copyright 2024 by Michael Kohn, Joe Davisson
 
-// This is a hardcoded program that blinks an external LED.
+// This creates 1024 bytes of ROM on the FPGA itself which begins at 0x0000.
 
 module rom
 (
   input [9:0] address,
-//  output reg [7:0] data_out,
   output reg [7:0] data_out,
   input clk
 );
-
-//reg [7:0] data;
-//assign data_out = data;
 
 reg [7:0] memory [1023:0];
 
@@ -27,7 +23,6 @@ initial begin
 end
 
 always @(posedge clk) begin
-//  data_out <= memory[address[9:0]];
   data_out <= memory[address[9:0]];
 end
 

@@ -7,7 +7,7 @@
 //
 // Copyright 2024 by Michael Kohn, Joe Davisson
 
-// This creates 1024 bytes of RAM on the FPGA itself.
+// This creates 1024 bytes of RAM on the FPGA itself which begins at 0x4000.
 
 module ram
 (
