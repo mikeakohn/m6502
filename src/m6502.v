@@ -111,7 +111,7 @@ always @(posedge raw_clk) begin
     // A
     3'b000: begin column_value <= 4'b0111; leds_value <= ~reg_a; end
     // Y
-    3'b010: begin column_value <= 4'b1011; leds_value <= ~flags; end
+    3'b010: begin column_value <= 4'b1011; leds_value <= ~reg_y; end
     // PC (LSB)
     3'b100: begin column_value <= 4'b1101; leds_value <= ~pc[7:0]; end
     // PC (MSB)
@@ -391,16 +391,17 @@ always @(posedge clk) begin
                             state <= STATE_POP_SR_0;
                             address_mode <= ADDRESS_MODE_NONE;
                           end
-                        OP_RTS:
-                          begin
-                            state <= STATE_POP_PC_LO_0;
-                            address_mode <= ADDRESS_MODE_NONE;
-                          end
                         OP_JSR:
                           begin
                             state <= STATE_FETCH_LO_0;
                             address_mode <= ADDRESS_MODE_JSR;
                           end
+                        OP_RTS:
+                          begin
+                            state <= STATE_POP_PC_LO_0;
+                            address_mode <= ADDRESS_MODE_NONE;
+                          end
+/*
                         OP_JMP:
                           begin
                             state <= STATE_FETCH_LO_0;
@@ -411,6 +412,7 @@ always @(posedge clk) begin
                             state <= STATE_FETCH_LO_0;
                             address_mode <= ADDRESS_MODE_ABSOLUTE;
                           end
+*/
                         default:
                           begin
                             state <= STATE_FETCH_IM_0;
@@ -425,8 +427,23 @@ always @(posedge clk) begin
                     end
                   MODE_C00_ABSOLUTE:
                     begin
-                      state <= STATE_FETCH_LO_0;
-                      address_mode <= ADDRESS_MODE_ABSOLUTE;
+                      case (operation)
+                        OP_JMP:
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_ABSOLUTE;
+                          end
+                        OP_JMP_IND:
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_ABSOLUTE;
+                          end
+                        default
+                          begin
+                            state <= STATE_FETCH_LO_0;
+                            address_mode <= ADDRESS_MODE_ABSOLUTE;
+                          end
+                      endcase
                     end
                   MODE_C00_ZP_X:
                     begin
