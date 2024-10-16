@@ -3,7 +3,12 @@ Soft Core 6502
 
 This is a 6502 CPU implemented in an FPGA.
 
-https://www.mikekohn.net/micro/6502_fpga.php
+This project has been replaced with this:
+
+https://www.mikekohn.net/micro/w65c832_fpga.php
+
+I'll probably delete this from github since it's not complete anyway
+and the W65C832 can run the 6502 code as is.
 
 Registers
 =========
